@@ -1,0 +1,46 @@
+test_duration: 600
+n_db_nodes: 3
+n_loaders: 1
+n_monitor_nodes: 1
+
+instance_type_db: 'i3.4xlarge'
+instance_type_loader: 'c5.9xlarge'
+
+
+
+pre_create_keyspace: [
+  "CREATE KEYSPACE ycsb WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor': 3 };",
+  "CREATE TABLE ycsb.usertable (y_id varchar primary key, field0 varchar, field1 varchar, field2 varchar, field3 varchar, field4 varchar, field5 varchar, field6 varchar, field7 varchar, field8 varchar, field9 varchar);"
+]
+
+prepare_write_cmd:
+    bin/ycsb load scylla -s -jvm-args=-XX:MaxRAMPercentage=85.0
+    -p scylla.keyspace=ycsb -p scylla.username=cassandra
+    -p scylla.password=cassandra -target 25000
+    -p workload=site.ycsb.workloads.CoreWorkload
+    -threads 400 -p recordcount=5000000 -p operationcount=54000000
+    -p fieldcount=10 -p fieldlength=50 -p requestdistribution=zipfian
+    -p insertorder=ordered -p readproportion=0.5 -p updateproportion=0.0
+    -p insertproportion=0.5 -p scanproportion=0.0 -p scanlengthdistribution=uniform
+    -p core_workload_insertion_retry_limit=3 -p core_workload_insertion_retry_interval=3
+
+stress_cmd:
+    bin/ycsb run scylla -s -jvm-args=-XX:MaxRAMPercentage=85.0
+    -p scylla.keyspace=ycsb -p scylla.username=cassandra
+    -p scylla.password=cassandra -p scylla.writeconsistencylevel=ONE
+    -p scylla.readconsistencylevel=ONE -p workload=site.ycsb.workloads.CoreWorkload
+    -p maxexecutiontime=1800 -threads 400 -p recordcount=5000000 -p operationcount=54000000
+    -p fieldcount=10 -p fieldlength=50 -p requestdistribution=zipfian -p insertorder=ordered
+    -p readproportion=0.5 -p updateproportion=0.0 -p insertproportion=0.5 -p scanproportion=0.0
+    -p scanlengthdistribution=uniform -p core_workload_insertion_retry_limit=3
+    -p core_workload_insertion_retry_interval=3 -p insertstart=5000000
+
+authenticator: 'PasswordAuthenticator'
+authenticator_user: cassandra
+authenticator_password: cassandra
+authorizer: 'CassandraAuthorizer'
+
+user_prefix: 'perf-ycsb-bench-ant'
+email_subject_postfix: 'YCSB benchANT'
+store_perf_results: true
+send_email: true
