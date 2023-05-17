@@ -1420,6 +1420,9 @@ class SCTConfiguration(dict):
         dict(name="enable_argus", env="SCT_ENABLE_ARGUS", type=boolean,
              help="Control reporting to argus"),
 
+        dict(name="argus_test_id", env="SCT_ARGUS_TEST_ID", type=str,
+             help="Reuse existing argus test run id"),
+
         dict(name="cs_populating_distribution", env="SCT_CS_POPULATING_DISTRIBUTION", type=str,
              help="""set c-s parameter '-pop' with gauss/uniform distribution for
              performance gradual throughtput grow tests"""),

@@ -171,6 +171,21 @@ def call(Map pipelineParams) {
                     }
                }
             }
+            stage('Create Argus Test Run') {
+                steps {
+                    catchError(stageResult: 'FAILURE') {
+                        script {
+                            wrap([$class: 'BuildUser']) {
+                                dir('scylla-cluster-tests') {
+                                    timeout(time: 5, unit: 'MINUTES') {
+                                        createArgusTestRun(params)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             stage('Get test duration') {
                 options {
                     timeout(time: 10, unit: 'MINUTES')
@@ -287,6 +302,7 @@ def call(Map pipelineParams) {
                                             export SCT_SCYLLA_MGMT_PKG="${params.scylla_mgmt_pkg}"
                                         fi
 
+                                        export SCT_ARGUS_TEST_ID=\$(cat argus_test_id||echo "")
                                         echo "start test ......."
                                         RUNNER_IP=\$(cat sct_runner_ip||echo "")
                                         if [[ -n "\${RUNNER_IP}" ]] ; then
@@ -393,6 +409,21 @@ def call(Map pipelineParams) {
                             wrap([$class: 'BuildUser']) {
                                 dir('scylla-cluster-tests') {
                                     cleanSctRunners(params, currentBuild)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            stage('Finish Argus Test Run') {
+                steps {
+                    catchError(stageResult: 'FAILURE') {
+                        script {
+                            wrap([$class: 'BuildUser']) {
+                                dir('scylla-cluster-tests') {
+                                    timeout(time: 5, unit: 'MINUTES') {
+                                        finishArgusTestRun(params, currentBuild)
+                                    }
                                 }
                             }
                         }
