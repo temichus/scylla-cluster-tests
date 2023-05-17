@@ -377,7 +377,10 @@ class ClusterTester(db_stats.TestStatsMixin, unittest.TestCase):  # pylint: disa
     def init_argus_run(self):
         try:
             self.test_config.init_argus_client(self.params)
-            if not os.environ.get('ARGUS_TEST_ID', None):
+            self.log.info("ARGUS_TEST_ID %s", os.environ.get('SCT_ARGUS_TEST_ID', None))
+            self.log.info("argus_test_id %s", self.params.get('argus_test_id'))
+            self.log.info("test_id %s", self.test_config.test_id())
+            if self.params.get('argus_test_id') != self.test_config.test_id():
                 self.test_config.argus_client().submit_sct_run(
                     job_name=get_job_name(),
                     job_url=get_job_url(),
@@ -387,9 +390,14 @@ class ClusterTester(db_stats.TestStatsMixin, unittest.TestCase):  # pylint: disa
                     runner_private_ip=get_my_ip(),
                     sct_config=self.params,
                 )
-            self.log.info("Initialized Argus TestRun with test id %s", self.test_config.argus_client().run_id)
+                self.log.info("Initialized Argus TestRun with test id %s", self.test_config.argus_client().run_id)
+            else:
+                self.log.info("Argus TestRun with test id %s already initialized",
+                              self.test_config.argus_client().run_id)
         except ArgusClientError:
             self.log.error("Failed to submit data to Argus", exc_info=True)
+
+        raise Exception("123")
 
     def start_argus_heartbeat_thread(self) -> threading.Event:
         def send_argus_heartbeat(client: ArgusSCTClient, stop_signal: threading.Event):

@@ -30,7 +30,6 @@ from pathlib import Path
 from functools import partial
 from typing import List
 from uuid import UUID
-from uuid import uuid4
 
 import pytest
 import click
@@ -38,6 +37,7 @@ import yaml
 from prettytable import PrettyTable
 from argus.client.sct.types import LogLink
 from argus.client.base import ArgusClientError
+from argus.backend.util.enums import TestStatus
 
 import sct_ssh
 from sdcm.localhost import LocalHost
@@ -45,7 +45,7 @@ from sdcm.provision import AzureProvisioner
 from sdcm.provision.provisioner import VmInstance
 from sdcm.remote import LOCALRUNNER
 from sdcm.results_analyze import PerformanceResultsAnalyzer, BaseResultsAnalyzer
-from sdcm.sct_config import SCTConfiguration, init_and_verify_sct_config
+from sdcm.sct_config import SCTConfiguration
 from sdcm.sct_provision.common.layout import SCTProvisionLayout, create_sct_configuration
 from sdcm.sct_provision.instances_provider import provision_sct_resources
 from sdcm.sct_runner import AwsSctRunner, GceSctRunner, AzureSctRunner, get_sct_runner, clean_sct_runners, \
@@ -1672,21 +1672,20 @@ def configure_jenkins_builders(cloud_provider, regions):
             raise NotImplementedError("configure_jenkins_builders doesn't support Azure yet")
 
 
-@cli.command("create-test-run", help="Initialize an argus test run.")
+@cli.command("create-argus-test-run", help="Initialize an argus test run.")
 def create_test_run():
     try:
-        params = init_and_verify_sct_config()
+        argus_test_id_path = Path("argus_test_id")
+        argus_test_id_path.unlink(missing_ok=True)
+        params = SCTConfiguration()
         test_config = get_test_config()
 
-        reuse_cluster_id = params.get('reuse_cluster')
-        if reuse_cluster_id:
-            test_config.reuse_cluster(True)
-            test_config.set_test_id(reuse_cluster_id)
-        else:
-            # Test id is set by Hydra or generated if running without Hydra
-            test_config.set_test_id(params.get('test_id') or uuid4())
+        if not params.get('test_id'):
+            LOGGER.error("test_id is not set")
+            return
+
+        test_config.set_test_id(params.get('test_id'))
         os.environ['SCT_TEST_ID'] = test_config.test_id()
-        os.environ['ARGUS_TEST_ID'] = test_config.test_id()
 
         test_config.init_argus_client(params)
         test_config.argus_client().submit_sct_run(
@@ -1699,7 +1698,37 @@ def create_test_run():
             sct_config=params,
         )
 
+        with argus_test_id_path.open(mode="w", encoding="utf-8") as argus_test_id_file:
+            argus_test_id_file.write(test_config.test_id())
+
         LOGGER.info("Initialized Argus TestRun with test id %s", get_test_config().argus_client().run_id)
+    except ArgusClientError:
+        LOGGER.error("Failed to submit data to Argus", exc_info=True)
+
+
+@cli.command("finish-argus-test-run", help="Set argus test run status.")
+@click.option("-s", "--jenkins-status", type=str, help="jenkins build status status", required=True)
+def set_argus_test_status(jenkins_status):
+    try:
+        params = SCTConfiguration()
+        test_config = get_test_config()
+
+        if not params.get('test_id'):
+            LOGGER.error("test_id is not set")
+            return
+
+        test_config.set_test_id(params.get('test_id'))
+        test_config.init_argus_client(params)
+        status = test_config.argus_client().get_status()
+
+        if status in [TestStatus.PASSED, TestStatus.FAILED]:
+            LOGGER.info("Argus TestRun already finished with status %s", status.value)
+            return
+
+        new_status = TestStatus.FAILED
+        if jenkins_status == "ABORTED":
+            new_status = TestStatus.ABORTED
+        test_config.argus_client().set_sct_run_status(new_status)
     except ArgusClientError:
         LOGGER.error("Failed to submit data to Argus", exc_info=True)
 
