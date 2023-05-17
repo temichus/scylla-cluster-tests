@@ -154,6 +154,7 @@ def call(Map params, String region, functional_test = false, Map pipelineParams 
         export PYTEST_ADDOPTS="${params.pytest_addopts}"
     fi
 
+    export SCT_ARGUS_TEST_ID=\$(cat argus_test_id||echo "")
     echo "start test ......."
     RUNNER_IP=\$(cat sct_runner_ip||echo "")
     if [[ -n "\${RUNNER_IP}" ]] ; then
