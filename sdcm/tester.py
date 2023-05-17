@@ -377,15 +377,16 @@ class ClusterTester(db_stats.TestStatsMixin, unittest.TestCase):  # pylint: disa
     def init_argus_run(self):
         try:
             self.test_config.init_argus_client(self.params)
-            self.test_config.argus_client().submit_sct_run(
-                job_name=get_job_name(),
-                job_url=get_job_url(),
-                started_by=get_username(),
-                commit_id=get_git_commit_id(),
-                runner_public_ip=get_sct_runner_ip(),
-                runner_private_ip=get_my_ip(),
-                sct_config=self.params,
-            )
+            if not os.environ.get('ARGUS_TEST_ID', None):
+                self.test_config.argus_client().submit_sct_run(
+                    job_name=get_job_name(),
+                    job_url=get_job_url(),
+                    started_by=get_username(),
+                    commit_id=get_git_commit_id(),
+                    runner_public_ip=get_sct_runner_ip(),
+                    runner_private_ip=get_my_ip(),
+                    sct_config=self.params,
+                )
             self.log.info("Initialized Argus TestRun with test id %s", self.test_config.argus_client().run_id)
         except ArgusClientError:
             self.log.error("Failed to submit data to Argus", exc_info=True)
