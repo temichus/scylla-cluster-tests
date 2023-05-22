@@ -377,7 +377,19 @@ class ClusterTester(db_stats.TestStatsMixin, unittest.TestCase):  # pylint: disa
     def init_argus_run(self):
         try:
             self.test_config.init_argus_client(self.params)
-            if self.params.get('argus_test_id') != self.test_config.test_id():
+            try:
+                stauts = self.test_config.argus_client().get_status()
+                self.log.info(stauts)
+                is_argus_run_exists = True
+            except ArgusClientError as exc:
+                if exc.args[1] == 'DoesNotExist':
+                    message = f"test_id {self.test_config.test_id()} DoesNotExist in Argus"
+                    self.log.info(message)
+                    is_argus_run_exists = False
+                else:
+                    raise
+            self.log.info(is_argus_run_exists)
+            if not is_argus_run_exists:
                 self.test_config.argus_client().submit_sct_run(
                     job_name=get_job_name(),
                     job_url=get_job_url(),
@@ -393,6 +405,8 @@ class ClusterTester(db_stats.TestStatsMixin, unittest.TestCase):  # pylint: disa
                               self.test_config.argus_client().run_id)
         except ArgusClientError:
             self.log.error("Failed to submit data to Argus", exc_info=True)
+
+        raise Exception("123")
 
     def start_argus_heartbeat_thread(self) -> threading.Event:
         def send_argus_heartbeat(client: ArgusSCTClient, stop_signal: threading.Event):
