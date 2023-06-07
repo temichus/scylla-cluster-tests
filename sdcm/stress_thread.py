@@ -394,5 +394,5 @@ def get_timeout_from_stress_cmd(stress_cmd: str) -> int | None:
     if timeout == 0:
         return None
     else:
-        # adding 15 minutes to timeout for general all others delays
-        return timeout + 900
+        # adding 20 minutes to timeout for general all others delays
+        return timeout + 1200
