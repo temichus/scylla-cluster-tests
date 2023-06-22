@@ -1554,6 +1554,7 @@ class SCTConfiguration(dict):
     ]
     ami_id_params = ['ami_id_db_scylla', 'ami_id_loader', 'ami_id_monitor', 'ami_id_db_cassandra', 'ami_id_db_oracle']
     aws_supported_regions = ['eu-west-1', 'eu-west-2', 'us-west-2', 'us-east-1', 'eu-north-1', 'eu-central-1']
+    additional_data_for_elastic = {}
 
     def __init__(self):
         # pylint: disable=too-many-locals,too-many-branches,too-many-statements
@@ -1647,9 +1648,11 @@ class SCTConfiguration(dict):
                                 break
                         else:
                             raise ValueError(f"AMIs for {scylla_version=} not found in {region}")
-                    self.log.debug("Found AMI %s for scylla_version='%s' in %s", ami.image_id, scylla_version, region)
+                    self.log.debug("Found AMI %s(%s) for scylla_version='%s' in %s",
+                                   ami.name, ami.image_id, scylla_version, region)
                     ami_list.append(ami)
                 self['ami_id_db_scylla'] = " ".join(ami.image_id for ami in ami_list)
+                self.additional_data_for_elastic['ami_name_db_scylla'] = " ".join(ami.name for ami in ami_list)
             elif not self.get("gce_image_db") and self.get("cluster_backend") == "gce":
                 if ":" in scylla_version:
                     gce_image = get_branched_gce_images(scylla_version=scylla_version)[0]

@@ -601,6 +601,10 @@ class TestStatsMixin(Stats):
                 else:
                     setup_details[key] = value
 
+        setup_details["additional_setup_details"] = {}
+        for key, value in self.params.additional_data_for_elastic.items():
+            setup_details["additional_setup_details"][key] = value
+
         new_scylla_packages = self.params.get('update_db_packages')
         setup_details['packages_updated'] = bool(new_scylla_packages and os.listdir(new_scylla_packages))
         setup_details['cpu_platform'] = 'UNKNOWN'
