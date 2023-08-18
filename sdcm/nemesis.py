@@ -1991,6 +1991,7 @@ class Nemesis:  # pylint: disable=too-many-instance-attributes,too-many-public-m
 
     def _add_drop_column_run_cql_query(self, cmd, ks,
                                        consistency_level=ConsistencyLevel.ALL):  # pylint: disable=too-many-branches
+        self.log.info(f"Add/Remove Column Nemesis: CQL query '{cmd}' execution")
         try:
             with self.cluster.cql_connection_patient(self.target_node, keyspace=ks) as session:
                 session.default_consistency_level = consistency_level
