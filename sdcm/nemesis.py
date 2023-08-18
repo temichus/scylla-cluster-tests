@@ -2001,6 +2001,17 @@ class Nemesis:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             return False
         return True
 
+    def _add_drop_column_run_cql_query_fast(self, cmd, session,
+                                            consistency_level=ConsistencyLevel.ALL):  # pylint: disable=too-many-branches
+        self.log.info(f"Add/Remove Column Nemesis: CQL query '{cmd}' execution")
+        try:
+            session.default_consistency_level = consistency_level
+            session.execute(cmd)
+        except Exception as exc:  # pylint: disable=broad-except
+            self.log.debug(f"Add/Remove Column Nemesis: CQL query '{cmd}' execution has failed with error '{str(exc)}'")
+            return False
+        return True
+
     def _add_drop_column_generate_columns_to_add(self, added_columns_info):
         add = []
         columns_to_add = min(
@@ -2028,27 +2039,64 @@ class Nemesis:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                                                                           self._add_drop_column_columns_info)
         added_columns_info.get('column_names', None)
         if not added_columns_info['column_names']:
-            drop = False
+            drop = []
         if drop:
             drop = self._add_drop_column_generate_columns_to_drop(added_columns_info)
         if add:
             add = self._add_drop_column_generate_columns_to_add(added_columns_info)
         if not add and not drop:
             return
-        # TBD: Scylla does not support DROP and ADD in the same statement
-        if drop:
-            cmd = f"ALTER TABLE {self._add_drop_column_target_table[1]} DROP ( {', '.join(drop)} );"
-            if self._add_drop_column_run_cql_query(cmd, self._add_drop_column_target_table[0]):
-                for column_name in drop:
-                    column_type = added_columns_info['column_names'][column_name]
-                    del added_columns_info['column_names'][column_name]
-        if add:
-            cmd = f"ALTER TABLE {self._add_drop_column_target_table[1]} " \
-                  f"ADD ( {', '.join(['%s %s' % (col[0], col[1]) for col in add])} );"
-            if self._add_drop_column_run_cql_query(cmd, self._add_drop_column_target_table[0]):
-                for column_name, column_type in add:
-                    added_columns_info['column_names'][column_name] = column_type
-                    column_type.remember_variant(added_columns_info['column_types'])
+
+        def remove_columns_callback(columns, result):
+            self.log.info(f"remove_columns_info {columns}, {result}")
+            for column_name in columns:
+                del added_columns_info['column_names'][column_name]
+
+        def add_columns_callback(columns, result):
+            self.log.info(f"add_columns_info {columns}, {result}")
+            for column_name, column_type in columns:
+                added_columns_info['column_names'][column_name] = column_type
+                column_type.remember_variant(added_columns_info['column_types'])
+
+        def error_callback(cmd, exc):
+            self.log.info(f"Add/Remove Column Nemesis: CQL query '{cmd}' execution has failed with error '{str(exc)}'")
+
+        with self.cluster.cql_connection_patient(self.target_node) as session:
+            session.default_consistency_level = ConsistencyLevel.ALL
+            cmds = []
+            abc = False
+            # bool(random.getrandbits(1)):
+            if abc:
+                # TBD: Scylla does not support DROP and ADD in the same statement
+                if drop:
+                    cmds.append({"type": "DROP",
+                                 "callback": partial(remove_columns_callback, columns=drop),
+                                 "cmd": f"ALTER TABLE {self._add_drop_column_target_table[0]}."
+                                        f"{self._add_drop_column_target_table[1]} DROP ( {', '.join(drop)} );"})
+                if add:
+                    cmds.append({"type": "ADD",
+                                 "callback": partial(add_columns_callback, columns=add),
+                                 "cmd": f"ALTER TABLE {self._add_drop_column_target_table[0]}."
+                                        f"{self._add_drop_column_target_table[1]} ADD "
+                                        f"( {', '.join(['%s %s' % (col[0], col[1]) for col in add])} );"})
+            else:
+                for column in drop:
+                    cmds.append({"type": "DROP",
+                                 "callback": partial(remove_columns_callback, columns=[column]),
+                                 "cmd": f"ALTER TABLE {self._add_drop_column_target_table[0]}."
+                                        f"{self._add_drop_column_target_table[1]} DROP ( {column} );"})
+                for column in add:
+                    cmds.append({"type": "ADD",
+                                 "callback": partial(add_columns_callback, columns=[column]),
+                                 "cmd": f"ALTER TABLE {self._add_drop_column_target_table[0]}."
+                                        f"{self._add_drop_column_target_table[1]} ADD ( {column[0]} {column[1]} );"})
+            for cmd in cmds:
+                self.log.info(f"Add/Remove Column Nemesis: CQL query {cmd['cmd']} execution")
+                cmd["future"] = session.execute_async(cmd["cmd"])
+            for cmd in cmds:
+                cmd["future"].add_callbacks(cmd["callback"], partial(error_callback, cmd=cmd["cmd"]))
+            for cmd in cmds:
+                cmd["future"].result()
 
     def _add_drop_column_run_in_cycle(self):
         start_time = time.time()
