@@ -32,6 +32,7 @@ from distutils.version import LooseVersion
 
 from typing import Any, List, Optional, Type, Tuple, Callable, Dict, Set, Union, Iterable
 from functools import wraps, partial
+from itertools import cycle
 
 from collections import defaultdict, Counter, namedtuple
 from concurrent.futures import ThreadPoolExecutor
@@ -1993,17 +1994,6 @@ class Nemesis:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                 drop.append(column_name)
         return drop
 
-    def _add_drop_column_run_cql_query(self, cmd, ks,
-                                       consistency_level=ConsistencyLevel.ALL):  # pylint: disable=too-many-branches
-        try:
-            with self.cluster.cql_connection_patient(self.target_node, keyspace=ks) as session:
-                session.default_consistency_level = consistency_level
-                session.execute(cmd)
-        except Exception as exc:  # pylint: disable=broad-except
-            self.log.debug(f"Add/Remove Column Nemesis: CQL query '{cmd}' execution has failed with error '{str(exc)}'")
-            return False
-        return True
-
     def _add_drop_column_generate_columns_to_add(self, added_columns_info):
         add = []
         columns_to_add = min(
@@ -2022,7 +2012,7 @@ class Nemesis:  # pylint: disable=too-many-instance-attributes,too-many-public-m
             add.append([new_column_name, new_column_type])
         return add
 
-    def _add_drop_column(self, drop=True, add=True):  # pylint: disable=too-many-branches
+    def _add_drop_column(self, sessions, drop=True, add=True):  # pylint: disable=too-many-branches
         self._add_drop_column_target_table = self._add_drop_column_get_target_table(
             self._add_drop_column_target_table)
         if self._add_drop_column_target_table is None:
@@ -2031,33 +2021,72 @@ class Nemesis:  # pylint: disable=too-many-instance-attributes,too-many-public-m
                                                                           self._add_drop_column_columns_info)
         added_columns_info.get('column_names', None)
         if not added_columns_info['column_names']:
-            drop = False
+            drop = []
         if drop:
             drop = self._add_drop_column_generate_columns_to_drop(added_columns_info)
         if add:
             add = self._add_drop_column_generate_columns_to_add(added_columns_info)
         if not add and not drop:
             return
+
+        def remove_columns_callback(columns, result):
+            self.log.debug(f"remove_columns_info {columns}, {result}")
+            for column_name in columns:
+                del added_columns_info['column_names'][column_name]
+
+        def add_columns_callback(columns, result):
+            self.log.debug(f"add_columns_info {columns}, {result}")
+            for column_name, column_type in columns:
+                added_columns_info['column_names'][column_name] = column_type
+                column_type.remember_variant(added_columns_info['column_types'])
+
+        cmds = []
+        session_iteratior = cycle(sessions)
+        table_name = f"{self._add_drop_column_target_table[0]}.{self._add_drop_column_target_table[1]}"
         # TBD: Scylla does not support DROP and ADD in the same statement
-        if drop:
-            cmd = f"ALTER TABLE {self._add_drop_column_target_table[1]} DROP ( {', '.join(drop)} );"
-            if self._add_drop_column_run_cql_query(cmd, self._add_drop_column_target_table[0]):
-                for column_name in drop:
-                    column_type = added_columns_info['column_names'][column_name]
-                    del added_columns_info['column_names'][column_name]
-        if add:
-            cmd = f"ALTER TABLE {self._add_drop_column_target_table[1]} " \
-                  f"ADD ( {', '.join(['%s %s' % (col[0], col[1]) for col in add])} );"
-            if self._add_drop_column_run_cql_query(cmd, self._add_drop_column_target_table[0]):
-                for column_name, column_type in add:
-                    added_columns_info['column_names'][column_name] = column_type
-                    column_type.remember_variant(added_columns_info['column_types'])
+        if bool(random.getrandbits(1)):  # randomize commands by splitting 1 add/drop command into multiple
+            if drop:
+                cmds.append({"callback": partial(remove_columns_callback, columns=drop),
+                             "cmd": f"ALTER TABLE {table_name} DROP ( {', '.join(drop)} );",
+                             "session": next(session_iteratior)})
+            if add:
+                cmds.append({"callback": partial(add_columns_callback, columns=add),
+                             "cmd": f"ALTER TABLE {table_name} ADD "
+                                    f"( {', '.join(['%s %s' % (col[0], col[1]) for col in add])} );",
+                             "session": next(session_iteratior)})
+        else:
+            for column in drop:
+                cmds.append({"callback": partial(remove_columns_callback, columns=[column]),
+                             "cmd": f"ALTER TABLE {table_name} DROP ( {column} );",
+                             "session": next(session_iteratior)})
+            for column in add:
+                cmds.append({"callback": partial(add_columns_callback, columns=[column]),
+                             "cmd": f"ALTER TABLE {table_name} ADD ( {column[0]} {column[1]} );",
+                             "session": next(session_iteratior)})
+
+        def execute_add_drop_cmd(command):
+            command["future"] = command["session"].execute_async(command["cmd"])
+
+        with ThreadPoolExecutor(max_workers=10, thread_name_prefix='AddDropColumnThread') as thread_pool:
+            thread_pool.map(execute_add_drop_cmd, cmds)
+
+        for cmd in cmds:
+            try:
+                cmd["callback"](result=cmd["future"].result())
+            except Exception as exc:  # pylint: disable=broad-except
+                self.log.info(f"Add/Remove Column Nemesis: CQL query '{cmd['cmd']}' "
+                              f"execution has failed with error '{str(exc)}'")
 
     def _add_drop_column_run_in_cycle(self):
+        self.use_nemesis_seed()
         start_time = time.time()
         end_time = start_time + 600
         while time.time() < end_time:
-            self._add_drop_column()
+            with self.cluster.cql_connection_patient(self.target_node) as session_1:
+                with self.cluster.cql_connection_patient(self.target_node) as session_2:
+                    session_1.default_consistency_level = ConsistencyLevel.ALL
+                    session_2.default_consistency_level = ConsistencyLevel.ALL
+                    self._add_drop_column([session_1, session_2])
 
     def verify_initial_inputs_for_delete_nemesis(self):
         test_keyspaces = self.cluster.get_test_keyspaces()
