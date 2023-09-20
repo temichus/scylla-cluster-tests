@@ -179,7 +179,6 @@ def call(Map pipelineParams) {
                                         }
 
                                         stage("Provision Resources for ${sub_test}") {
-                                                catchError() {
                                                     script {
                                                         wrap([$class: 'BuildUser']) {
                                                             dir('scylla-cluster-tests') {
@@ -195,7 +194,6 @@ def call(Map pipelineParams) {
                                                             }
                                                         }
                                                     }
-                                                }
                                         }
 
                                         stage("Run ${sub_test}"){
