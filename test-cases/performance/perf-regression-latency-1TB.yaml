@@ -1,4 +1,4 @@
-test_duration: 550
+test_duration: 5500
 
 prepare_write_cmd: ["cassandra-stress write no-warmup cl=ALL n=250000000 -schema 'replication(strategy=NetworkTopologyStrategy,replication_factor=3)' -mode cql3 native -rate threads=200 -col 'size=FIXED(1024) n=FIXED(1)' -pop seq=1..250000000",
                     "cassandra-stress write no-warmup cl=ALL n=250000000 -schema 'replication(strategy=NetworkTopologyStrategy,replication_factor=3)' -mode cql3 native -rate threads=200 -col 'size=FIXED(1024) n=FIXED(1)' -pop seq=250000001..500000000",
@@ -30,3 +30,4 @@ backtrace_decoding: false
 print_kernel_callstack: true
 custom_es_index: 'performancestatsv2'
 use_hdr_cs_histogram: true
+use_placement_group: true

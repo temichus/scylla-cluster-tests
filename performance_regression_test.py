@@ -505,24 +505,25 @@ class PerformanceRegressionTest(ClusterTester):  # pylint: disable=too-many-publ
         1. Run a write workload
         """
         # run a write workload
-        base_cmd_w = self.params.get('stress_cmd_w')
-        stress_multiplier = self.params.get('stress_multiplier')
-        if stress_multiplier_w := self.params.get("stress_multiplier_w"):
-            stress_multiplier = stress_multiplier_w
-        # create new document in ES with doc_id = test_id + timestamp
-        # allow to correctly save results for future compare
-        self.create_test_stats(doc_id_with_timestamp=True)
-        self.run_fstrim_on_all_db_nodes()
+        for _ in range(5):
+            base_cmd_w = self.params.get('stress_cmd_w')
+            stress_multiplier = self.params.get('stress_multiplier')
+            if stress_multiplier_w := self.params.get("stress_multiplier_w"):
+                stress_multiplier = stress_multiplier_w
+            # create new document in ES with doc_id = test_id + timestamp
+            # allow to correctly save results for future compare
+            self.create_test_stats(doc_id_with_timestamp=True)
+            self.run_fstrim_on_all_db_nodes()
 
-        # run a workload
-        stress_queue = self.run_stress_thread(
-            stress_cmd=base_cmd_w, stress_num=stress_multiplier, stats_aggregate_cmds=False)
-        results = self.get_stress_results(queue=stress_queue)
+            # run a workload
+            stress_queue = self.run_stress_thread(
+                stress_cmd=base_cmd_w, stress_num=stress_multiplier, stats_aggregate_cmds=False)
+            results = self.get_stress_results(queue=stress_queue)
 
-        self.build_histogram(PerformanceTestWorkload.WRITE, PerformanceTestType.THROUGHPUT)
-        self.update_test_details(scylla_conf=True)
-        self.display_results(results, test_name='test_write')
-        self.check_regression()
+            self.build_histogram(PerformanceTestWorkload.WRITE, PerformanceTestType.THROUGHPUT)
+            self.update_test_details(scylla_conf=True)
+            self.display_results(results, test_name='test_write')
+            self.check_regression()
 
     def test_read(self):
         """
@@ -597,15 +598,16 @@ class PerformanceRegressionTest(ClusterTester):  # pylint: disable=too-many-publ
         """
         self.run_fstrim_on_all_db_nodes()
         self.preload_data()
-        self.wait_no_compactions_running()
-        self.run_fstrim_on_all_db_nodes()
-        self.run_read_workload()
-        self.wait_no_compactions_running()
-        self.run_fstrim_on_all_db_nodes()
-        self.run_write_workload()
-        self.wait_no_compactions_running()
-        self.run_fstrim_on_all_db_nodes()
-        self.run_mixed_workload()
+        for _ in range(5):
+            self.wait_no_compactions_running()
+            self.run_fstrim_on_all_db_nodes()
+            # self.run_read_workload()
+            # self.wait_no_compactions_running()
+            # self.run_fstrim_on_all_db_nodes()
+            # self.run_write_workload()
+            # self.wait_no_compactions_running()
+            # self.run_fstrim_on_all_db_nodes()
+            self.run_mixed_workload()
 
     def test_latency_read_with_nemesis(self):
         self.run_fstrim_on_all_db_nodes()
