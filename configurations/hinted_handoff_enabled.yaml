@@ -1,0 +1,2 @@
+append_scylla_yaml:
+  hinted_handoff_enabled: true
