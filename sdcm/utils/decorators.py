@@ -277,6 +277,7 @@ def latency_calculator_decorator(original_function: Optional[Callable] = None, *
                     result=result
                 )
 
+            LOGGER.debug("latency_results: %s", latency_results)
             with open(latency_results_file_path, 'w', encoding="utf-8") as file:
                 json.dump(latency_results, file)
 

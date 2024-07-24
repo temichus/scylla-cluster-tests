@@ -264,6 +264,7 @@ kafka_connectors: []
 
 run_scylla_doctor: false
 nemesis_double_load_during_grow_shrink_duration: 0
+repeat_nemesis: 1
 
 enterprise_disable_kms: false
 

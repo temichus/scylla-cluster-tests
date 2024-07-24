@@ -1534,6 +1534,10 @@ class SCTConfiguration(dict):
         dict(name="nemesis_double_load_during_grow_shrink_duration", env="SCT_NEMESIS_DOUBLE_LOAD_DURING_GROW_SHRINK_DURATION", type=int,
              help="After growing (and before shrink) in GrowShrinkCluster nemesis it will double the load for provided duration."),
 
+        dict(name="repeat_nemesis",
+             env="SCT_REPEAT_NEMESIS", type=int,
+             help="repeat nemesis exact amount of time"),
+
         dict(name="raid_level", env="SCT_RAID_LEVEL",
              type=int,
              help="Number of of raid level: 0 - RAID0, 5 - RAID5"),
