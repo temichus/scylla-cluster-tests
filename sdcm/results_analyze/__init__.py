@@ -434,7 +434,11 @@ class LatencyDuringOperationsPerformanceAnalyzer(BaseResultsAnalyzer):
         kernel_callstack_events_summary = {Severity.DEBUG.name: len(kernel_callstack_events)}
 
         config_files = ' '.join(doc["_source"]["setup_details"]["config_files"])
-        dataset_size = re.search(r'(\d{3}gb)', config_files).group() or 'unknown size'
+        dataset = re.search(r'(\d{3}gb)', config_files)
+        if dataset is None:
+            dataset_size = 'unknown size'
+        else:
+            dataset_size = dataset.group() or 'unknown size'
 
         subject = (f'{self._get_email_tags(doc, is_gce)} Performance Regression Compare Results '
                    f'({email_subject_postfix} {dataset_size}) -'

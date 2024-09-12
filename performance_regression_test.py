@@ -930,7 +930,7 @@ class PerformanceRegressionMaterializedViewLatencyTest(PerformanceRegressionTest
     def do_rewrite_workload(self):
         base_cmd = self.params.get('stress_cmd_no_mv')
         stress_queue = self.run_stress_thread(stress_cmd=base_cmd, stress_num=1, stats_aggregate_cmds=False)
-        results = self.get_stress_results(queue=stress_queue)
+        results = self.get_stress_results(queue=stress_queue, store_results=False)
         self.display_results(results, test_name='do_rewrite_workload')
 
     @latency_calculator_decorator
@@ -953,5 +953,5 @@ class PerformanceRegressionMaterializedViewLatencyTest(PerformanceRegressionTest
     def do_rewrite_workload_with_mv(self):
         base_cmd = self.params.get('stress_cmd_mv')
         stress_queue = self.run_stress_thread(stress_cmd=base_cmd, stress_num=1, stats_aggregate_cmds=False)
-        results = self.get_stress_results(queue=stress_queue)
+        results = self.get_stress_results(queue=stress_queue, store_results=False)
         self.display_results(results, test_name='do_rewrite_workload_with_mv')

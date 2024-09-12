@@ -28,4 +28,4 @@ print_kernel_callstack: true
 store_perf_results: true
 use_prepared_loaders: true
 use_hdr_cs_histogram: true
-custom_es_index: 'mv-overloading-latency-mixed'
+custom_es_index: 'mv-overloading-latency-read'
