@@ -1,5 +1,6 @@
 test_duration: 360
 
+pre_create_keyspace: "CREATE KEYSPACE IF NOT EXISTS keyspace1 WITH replication = {'class': 'NetworkTopologyStrategy', 'replication_factor': 3} AND tablets = {'initial': 1024};"
 prepare_write_cmd:  "cassandra-stress write cl=QUORUM n=83886080 -schema 'replication(strategy=NetworkTopologyStrategy,replication_factor=3) compaction(strategy=SizeTieredCompactionStrategy)' -mode cql3 native -rate threads=900 -pop seq=1..83886080 -col 'n=FIXED(10) size=FIXED(512)' -log interval=5"
 
 # option <sla credentials 0> - where "0" is first element of "service_level_shares" test parameter. This option will be replaced with user and password of the role name that assigned to service level with shares=service_level_shares[0]

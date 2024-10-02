@@ -18,11 +18,11 @@ LOGGER = logging.getLogger(__name__)
 class Steps(SlaUtils):
     # pylint: disable=too-many-arguments
     def run_stress_and_validate_scheduler_runtime_during_load(self, tester, read_cmds, prometheus_stats, read_roles,
-                                                              stress_queue, sleep=600):
+                                                              stress_queue, sleep=600, warmup_time=60):
         # pylint: disable=not-context-manager
         with TestStepEvent(step="Run stress command and validate scheduler runtime during load") as wp_event:
             try:
-                start_time = time.time() + 60
+                start_time = time.time() + warmup_time
                 # pylint: disable=protected-access
                 tester._run_all_stress_cmds(stress_queue, params={'stress_cmd': read_cmds, 'round_robin': True})
                 time.sleep(sleep)
@@ -375,7 +375,8 @@ class SlaTests(Steps):
                     self.run_stress_and_validate_scheduler_runtime_during_load(tester=tester, read_cmds=read_cmds,
                                                                                prometheus_stats=prometheus_stats,
                                                                                read_roles=read_roles,
-                                                                               stress_queue=stress_queue))
+                                                                               stress_queue=stress_queue,
+                                                                               warmup_time=300))
                 error_events.append(
                     self.alter_sl_and_validate_scheduler_runtime(tester=tester,
                                                                  service_level=role_low.attached_service_level,

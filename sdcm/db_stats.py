@@ -325,7 +325,7 @@ class PrometheusDBStats:
         if not self._check_start_end_time(start_time, end_time):
             return {}
         # the query is taken from the Grafana Dashborad definition
-        query = 'avg(irate(scylla_scheduler_runtime_ms{group=~"sl:.*", instance="%s"}  [%s] )) ' \
+        query = 'avg(irate(scylla_io_queue_total_operations{group=~"sl:.*", instance="%s"}  [%s] )) ' \
             'by (group, instance)' % (node_ip, irate_sample_sec)
         results = self.query(query=query, start=start_time, end=end_time)
         res = defaultdict(dict)
