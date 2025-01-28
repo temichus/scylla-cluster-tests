@@ -473,27 +473,8 @@ class FullScanAggregatesOperation(FullscanOperationBase):
                                   | FullPartitionScanReversedOrderEvent]) -> None:
         self.log.debug('Will run command %s', cmd)
         validate_mapreduce_service_requests_start_time = time.time()
-        try:
-            cmd_result = session.execute(
-                query=cmd, trace=False, timeout=self._session_execution_timeout)
-        except OperationTimedOut as exc:
-            self.log.error(traceback.format_exc())
-            self.current_operation_stat.exceptions.append(repr(exc))
-            event.message = f"{type(self).__name__} operation failed: {repr(exc)}," \
-                            f"session execution timeout {self._session_execution_timeout} is exceeded "
-            event.severity = Severity.ERROR
-            return
-        except ReadTimeout as exc:
-            self.current_operation_stat.exceptions.append(repr(exc))
-            self.current_operation_stat.exceptions.append(repr(exc))
-            if "Operation timed out" in repr(exc):
-                event.message = f"{type(self).__name__} operation failed due to operation timed out: {repr(exc)}," \
-                                f" full_scan_aggregates_operation_limit=" \
-                                f"{self.fullscan_params.full_scan_aggregates_operation_limit}"
-            else:
-                event.message = f"{type(self).__name__} operation failed, ReadTimeout error: {repr(exc)}"
-            event.severity = Severity.ERROR
-            return
+        cmd_result = session.execute(
+            query=cmd, trace=False, timeout=self._session_execution_timeout)
 
         message, severity = self._validate_fullscan_result(cmd_result, validate_mapreduce_service_requests_start_time)
         if not severity:
