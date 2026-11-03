@@ -393,6 +393,13 @@ the Porcupine research reached in §5.3, and what keeps Knossos/Elle fast.
   here: Elle's own key rotation is the equivalent, and `:info` txns are cheap for Elle. (d) The 2.1
   "-1 for a missing row" rule does not apply: for Elle a `nil` read is the key's initial version, and
   a `nil` after an `:ok` write is a realtime cycle; `-1` would be a value nobody wrote.
+  **Amended 2026-11-03** (fork commit `feat: sc-wr-register and sc-list-append rotate the partition
+  per generation`, applies to 2.3 too): `pk = 0` for the whole run exercised one tablet and one
+  Raft group. Partitions now come from `jepsen.independent` (fresh Elle generator per pk, 100-200
+  txns, 5 clients per pk); each txn stays inside one pk, so per-pk checking is sound. Needs
+  `--concurrency` as a multiple of 5. Re-checked: SC valid (594 txns, 6 partitions in 60 s); canary
+  (`--time-limit 120`) invalid, `:G-single-item-realtime :cyclic-versions`. list-append: SC valid
+  (591), canary `:G-single-item-realtime :G0-realtime`.
 - [x] **2.3 `sc-list-append`.** Elle list-append on `list<bigint>`: `UPDATE t SET v = v + [?]`
   (no `IF`), `SELECT v`. Checker `elle.list-append`, `:strict-serializable`.
   Two unknowns this workload settles (research §13): are collections accepted on SC tables, and
@@ -479,9 +486,18 @@ the Porcupine research reached in §5.3, and what keeps Knossos/Elle fast.
   (`:timeout` means the command runs on while Jepsen moves on, and a wipe can land mid-decommission:
   after the run n1 still listed the old host ids of the wiped nodes while n2/n3 rejoined with new
   ones). `nodetool status` exits 4 on a node that is bootstrapping and `nodetool repair` exits 3
-  with `timeout 5`; both are mapped to "down"/`:info` by the nemesis, not errors. SCYLLADB-4753 did
-  not show on 3 nodes with 32 tablets; the 5-node runs of the bug hunt watch for it. The SCT GCE
-  side (3.5) still has to confirm `nodetool` and `sudo` work the same there.
+  with `timeout 5`; both are mapped to "down"/`:info` by the nemesis, not errors. The SCT GCE
+  side (3.5) still has to confirm `nodetool` and `sudo` work the same there. **Three more harness
+  fixes** (fork commit `fix: membership nemesis fit for Raft topology and tablets`), found by
+  running it: (a) upstream wipes up to 2 nodes at once; on 3 nodes that destroyed a majority of
+  group 0 voters and the cluster could never re-form (`no raft quorum, total voters count 3, alive
+  voters count 1`) — now 1; (b) the 5 s `timeout` let the nemesis wipe a node while its
+  decommission was still running, after which the topology coordinator cancels every request
+  (`canceled because some required nodes are dead`) — now 600 s; (c) `nodetool repair` skips tablet
+  keyspaces, the nemesis now runs `nodetool cluster repair`. **Membership needs ≥ 4 nodes**: on 3
+  nodes with RF 3, Scylla cannot drain a leaving node (`Unable to find new replica for tablet … when
+  draining … Consider adding new nodes`) and the decommission waits forever, by design. 3.1's 5-node
+  test case is fine; the local bug hunt runs `:membership` on 5 nodes.
 - [ ] **3.5 First cloud run.** Trigger the new job on GCE with `master:latest`.
   Check: Argus run exists, `jepsen-data` archive in S3, SCT log has one `JepsenEvent` per test.
   DoD: all tests `:valid? true` or each failure filed as a Scylla ticket with the `results.edn`
