@@ -53,3 +53,7 @@ RUN mkdir -p /etc/apt/keyrings && \
 
 # --- jepsen.db/tcpdump hard-codes /usr/sbin/tcpdump. Same symlink as SCT jepsen_test.py:58.
 RUN ln -sf /usr/bin/tcpdump /usr/sbin/tcpdump
+
+# --- scylla.yaml for this node (listen/rpc address, seeds, SC feature flag), at boot.
+ADD configure-scylla.sh /usr/local/preinit/04-configure-scylla
+RUN chmod +x /usr/local/preinit/04-configure-scylla

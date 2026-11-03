@@ -48,10 +48,13 @@ docker exec jepsen-n1 sysctl -w fs.aio-max-nr=1048576
 docker exec jepsen-control sh -c 'cd /jepsen/scylla && lein run test --workload none --nemesis none --no-install-scylla --time-limit 10 --concurrency 3 --node n1 --node n2 --node n3 --username root --ssh-private-key /root/.ssh/id_rsa'
 ```
 
-`--no-install-scylla` skips `apt-get install` on the nodes (Scylla is in the image). Note that
-Jepsen 0.2.4 still rewrites `/etc/scylla/scylla.yaml` and wipes the data directory on every run
-(plan §2.2) — so until plan step 1.2 lands, the cluster runs with Jepsen's template config, which
-has no `experimental_features`, and SC DDL is rejected.
+`--no-install-scylla` selects `scylla.sc.db` (plan step 1.2): Jepsen starts, stops, kills and pauses
+Scylla but never writes `/etc/scylla/scylla.yaml` or touches the data directory, exactly as on an
+SCT-provisioned cluster. The nodes therefore configure themselves at boot
+(`node/configure-scylla.sh`): addresses, seeds, `cluster_name: jepsen`, 2 shards, 2 GiB, and
+`experimental_features: [strongly-consistent-tables]`. Jepsen stops Scylla at the end of a test
+before collecting logs (pass `--leave-db-running` to keep it up); the next run starts it again
+with its config and data intact.
 
 Results: `store/latest/results.edn` in the fork checkout (`:valid? true` on success),
 `store/latest/jepsen.log`, and per-node logs under `store/latest/n*/`. The first `lein run`
@@ -77,6 +80,7 @@ The directory is `jepsen-io/jepsen` at commit `50de29bb` (`docker/`, removed ups
 | JDK from apt (`openjdk-17-jdk-headless`) instead of an x86-64 Temurin tarball | `control/Dockerfile` | arm64 hosts |
 | No copy of the parent directory into the control image; fork is bind-mounted via `fork.yml` | `bin/up`, `control/Dockerfile` | the upstream layout expects the Jepsen monorepo as parent |
 | Scylla master pre-installed, `developer_mode`, `MEM_CONF=--memory 2G`, service disabled | `node/Dockerfile` | `--no-install-scylla`; several nodes on one host |
+| `scylla.yaml` written at boot by `04-configure-scylla` (addresses, seeds, SC flag, `--smp 2`) | `node/configure-scylla.sh` | with `scylla.sc.db` Jepsen no longer configures the nodes; SCT does this for its nodes |
 | `/usr/sbin/tcpdump -> /usr/bin/tcpdump` | `node/Dockerfile` | Jepsen hard-codes `/usr/sbin`; same symlink as `jepsen_test.py:58` |
 | ed25519 key instead of RSA | `bin/up` | jsch signs RSA with SHA-1, Debian 12 sshd rejects it; SCT's node keys are ed25519 too |
 
