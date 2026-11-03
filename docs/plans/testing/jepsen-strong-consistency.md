@@ -558,8 +558,21 @@ Running log, run table and draft bug reports live in the session notes (`jepsen-
   0.2.8 rewrote `ext-key-graph` again and still warns that `:linearizable-keys?` can report false
   version cycles: re-check any future `:cyclic-versions` with Elle 0.2.8 before calling it a
   Scylla bug.
-- Passed so far on SC (3 nodes, 300 s): all four workloads under partition and pause;
-  `sc-register` under clock.
+- **New Scylla bug candidate, CQL closed 30 s when 2+ nodes restart together.** The boot waits a
+  hard-coded 30 s for tablet raft groups to elect before `join_cluster` loads peer IPs, so
+  restarting nodes cannot vote for each other until it times out (related open SCYLLADB-4363).
+  Every majority or full-cluster restart costs 30 s of unavailability; kill tests see 49-99 s
+  outages when restarts are re-killed. Draft `bugs/sc-startup-30s-wait-for-groups-before-address-map.md`.
+- **Known Scylla bugs hit:** SCYLLADB-4722 (`unknown verb` SERVER_ERROR while a restarted leader
+  has no CQL yet), SCYLLADB-4756 and SCYLLADB-4671 (SC errors report consistency ONE, 0/0).
+- **Harness fixes from round 2 (kill):** `ServerError` maps to an indefinite error instead of
+  crashing the worker; the no-host-available sleep never fired (alia wraps the exception), so a
+  partition burned its ops in milliseconds and Elle answered `:unknown`
+  (`:empty-transaction-graph`); a partition with no ok txns now counts as valid; `await-open`
+  retries on the wrapped exception.
+- Passed so far on SC (3 nodes, 300 s): all four workloads under partition, pause, kill, clock,
+  pause+kill+partition and pause+kill+partition+clock (Elle runs with kill were `:unknown` before
+  the fixes above and must be rerun).
 
 ## 6. Success Criteria
 
