@@ -1,0 +1,4 @@
+secret/
+/docker-compose.yml
+control/jepsen/
+*.log

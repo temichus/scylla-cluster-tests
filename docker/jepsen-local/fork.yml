@@ -1,0 +1,6 @@
+# Mounts a checkout of https://github.com/scylladb/jepsen into the control node.
+# Set JEPSEN_SCYLLA to its absolute path before `docker compose`.
+services:
+  control:
+    volumes:
+      - "${JEPSEN_SCYLLA:?set JEPSEN_SCYLLA to a scylladb/jepsen checkout}:/jepsen/scylla"

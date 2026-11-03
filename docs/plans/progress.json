@@ -329,6 +329,16 @@
       "created": "2026-09-04",
       "phases_total": 9,
       "phases_done": 9
+    },
+    {
+      "id": "jepsen-strong-consistency",
+      "title": "Jepsen for Strong Consistency (SCYLLADB-42)",
+      "file": "testing/jepsen-strong-consistency.md",
+      "domain": "testing",
+      "status": "draft",
+      "created": "2026-11-03",
+      "phases_total": 6,
+      "phases_done": 0
     }
   ]
 }
