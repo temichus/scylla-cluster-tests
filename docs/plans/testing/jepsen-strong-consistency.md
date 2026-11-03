@@ -315,21 +315,21 @@ loader guests reach the internet for `lein deps` and `git clone`.
   marker file in `/var/lib/scylla/data/` on each local node, run the 0.3 smoke test, then
   `grep marker /etc/scylla/scylla.yaml && ls /var/lib/scylla/data/marker` on each node.
   DoD: both present on all nodes after the run; `results.edn` `:valid? true`. **Done 2026-11-03** — as the new `scylla.sc.db` (§4), selected by `--no-install-scylla` in `core.clj`; `db.clj` untouched. The marker file must be `chown scylla:scylla`: Scylla refuses to start on a root-owned file in its data directory (`File not owned by current euid`). Tier A needed the nodes to configure themselves at boot (`docker/jepsen-local/node/configure-scylla.sh`: addresses, seeds, SC flag, `--smp 2`), which answers the §5 "Needs Investigation" for `developer_mode` (it lives in `/etc/scylla.d`, not in `scylla.yaml`). Jepsen kills the DB before collecting logs unless `--leave-db-running`; config and data survive. Run: `Scylla up in 6.7 s` per node, `:valid? true`, both markers present on n1–n3.
-- [ ] **1.3 SC-aware schema setup.** Add a `--sc` flag (default on for `scylla.sc.*` workloads)
+- [x] **1.3 SC-aware schema setup.** Add a `--sc` flag (default on for `scylla.sc.*` workloads)
   that creates the keyspace with `consistency = 'global' AND tablets = {'initial': 32}` and
   `NetworkTopologyStrategy`, RF 3. Check: `cqlsh -e "DESCRIBE KEYSPACE jepsen_sc"` on a node after
-  a run. DoD: output contains `consistency = 'global'`.
-- [ ] **1.4 Retries, per §2.6.** In `scylla.sc.client`: `never-retry` hard-wired (no `--retry`
+  a run. DoD: output contains `consistency = 'global'`. **Done 2026-11-03** — `--[no-]sc` in `core.clj` (default on); `scylla.sc.db` creates `jepsen_sc` on the last node to come up (RF 3 with tablets needs all nodes). `cqlsh n1 -e "DESCRIBE KEYSPACE jepsen_sc"` → `... AND consistency = 'global' AND tablets = {'enabled': true, 'initial': 32}`. The check must name the node's address: a bare `cqlsh` targets 127.0.0.1, which the nodes do not listen on. A node restarted alone does not open CQL (Raft group 0 needs a majority), so start all nodes first.
+- [x] **1.4 Retries, per §2.6.** In `scylla.sc.client`: `never-retry` hard-wired (no `--retry`
   option), `setIdempotent(false)` on every statement, speculative execution off; `with-errors`
   called with `#{:read}` everywhere; `retry-each` only inside `setup!`; `aggressive-read` only on
   `:final-read`. Check: a unit test in the fork that opens the SC cluster options and asserts the
   retry-policy class and the statement idempotence flag, plus
   `grep -n "retry-each\|aggressive-read\|with-errors" src/scylla/sc/*.clj` reviewed against the
   §2.6 table. DoD: test green; every grep hit is in an allowed place; `grep -c "nbRetry > 100"`
-  on `scylla/sc/client.clj` is 0.
-- [ ] **1.5 Gate policy.** Set `jepsen_test_count: 1`, `jepsen_test_run_policy: all` in the SC
+  on `scylla/sc/client.clj` is 0. **Done 2026-11-03** — `scylla.sc.client`: `never-retry` hard-wired, `statement` sets `setIdempotent(false)` on every statement (alia's `:idempotent?` only sets the flag when true, so it is done on the Statement directly), server-side timestamps (SC rejects client timestamps; the fuzz/quantize generators are gone), `with-errors` has no idempotent-set parameter any more (`#{:read}` is built in), `aggressive-read` dropped until the batch-isolation workload needs a bounded one. `lein test :only scylla.sc.client-test`: 2 tests, 9 assertions, 0 failures. Greps: `retry-each` used once, in `scylla.sc.db/create-keyspace!` (DDL, called from `setup!`); `nbRetry > 100` count 0.
+- [x] **1.5 Gate policy.** Set `jepsen_test_count: 1`, `jepsen_test_run_policy: all` in the SC
   test case (new file, step 3.1). Keep the old YAMLs untouched until step 5.3 decides their fate.
-  Check: `uv run pytest unit_tests/unit/config -k jepsen -q`. DoD: green.
+  Check: `uv run pytest unit_tests/unit/config -k jepsen -q`. DoD: green. **Done 2026-11-03** — `test-cases/features/strong-consistency/jepsen-sc.yaml` with `jepsen_test_count: 1`, `jepsen_test_run_policy: all`, SC feature flag, 5 nodes; `test_metadata` and the taxonomy entries stay with 3.1 (`jepsen` is not a `stress_tools` value yet, `strong-consistency` not a `features` value). `uv run pytest unit_tests/unit/config -k jepsen -q`: 8 passed; `sct.py lint-yamls -b gce -i jepsen-sc`: clean.
 
 ### Phase 2 — SC workloads (fork, new namespaces `scylla.sc.*`)
 
