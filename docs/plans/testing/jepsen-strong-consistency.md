@@ -393,25 +393,47 @@ the Porcupine research reached in §5.3, and what keeps Knossos/Elle fast.
   here: Elle's own key rotation is the equivalent, and `:info` txns are cheap for Elle. (d) The 2.1
   "-1 for a missing row" rule does not apply: for Elle a `nil` read is the key's initial version, and
   a `nil` after an `:ok` write is a realtime cycle; `-1` would be a value nobody wrote.
-- [ ] **2.3 `sc-list-append`.** Elle list-append on `list<bigint>`: `UPDATE t SET v = v + [?]`
+- [x] **2.3 `sc-list-append`.** Elle list-append on `list<bigint>`: `UPDATE t SET v = v + [?]`
   (no `IF`), `SELECT v`. Checker `elle.list-append`, `:strict-serializable`.
   Two unknowns this workload settles (research §13): are collections accepted on SC tables, and
   does list element order follow Raft commit order. Check: as 2.1. DoD: either `:valid? true` on
   SC and `:valid? false` on the canary, **or** a written finding "lists on SC: <error>" and the
   workload marked skipped — both outcomes count as done; the second is a Scylla ticket (§7).
-- [ ] **2.4 `sc-batch-isolation`.** Port `write_isolation.clj` single-row variant: a BATCH writes
+  **Done 2026-11-03** — `scylla.sc.list-append`, fork commit `feat: sc-list-append and
+  sc-batch-isolation`. Both unknowns settled: `list<bigint>` columns, `SET v = v + [x]` in a
+  single-partition BATCH and `ck IN (…)` reads are accepted on SC, and list order followed commit
+  order. SC run `:valid? true` (584 txns all `:ok`); canary `:valid? false` (607 txns, 595 ok, 12
+  info), `:anomaly-types (:G-nonadjacent-item :G-single-item :G-single-item-realtime :G0 :incompatible-order)`, `:not #{:read-uncommitted}`. Same shape as 2.2 (one partition, Elle keys, `one-statement?`
+  filter, nil = empty initial list); no `-1` sentinel. Cold review: no defects.
+- [x] **2.4 `sc-batch-isolation`.** Port `write_isolation.clj` single-row variant: a BATCH writes
   the same value to N rows of one partition; a read of all rows must see one value. Checker: the
   existing write-isolation checker. Check: `grep -n "only-if\|serial" src/scylla/sc/batch_isolation.clj`
-  empty; run as 2.1. DoD: SC `:valid? true`, EC canary `:valid? false`.
-- [ ] **2.5 Bank — not applicable, write that down.** A bank transfer is a read-modify-write that
+  empty; run as 2.1. DoD: SC `:valid? true`, EC canary `:valid? false`. **Done 2026-11-03, with a
+  finding** — `scylla.sc.batch-isolation`: the *row* variant of `write_isolation.clj` (a BATCH over
+  a 3-row range of partition 0; the plan's "single-row variant" is the map-column client, which has
+  no batch). The original checker is not reused: its `same-write?` calls `Math/abs` on `nil`, so a
+  half-applied batch read next to an unwritten row would crash the checker instead of failing the
+  test; the port's `mixed?` is nil-safe and keeps the original's random sign per row (the only way a
+  same-timestamp tie can show as a torn read). SC run `:valid? true` (583 ops, `:error-count 0`).
+  **EC canary stays `:valid? true`** (605 ops, 595 ok, 10 fail) and will on any run: a
+  single-partition batch is one mutation on every replica on an EC keyspace as well, so CL ONE reads
+  under partitions see a stale batch, never a torn one; only a same-microsecond timestamp tie between
+  two coordinators could tear it. Isolation of a single-partition batch is an EC guarantee too, so
+  this workload cannot have an EC canary; the checker's "no" is covered by its unit test
+  (`mixed-test`). Cold review: no defects, same prediction for the canary.
+- [x] **2.5 Bank — not applicable, write that down.** A bank transfer is a read-modify-write that
   needs CAS or a counter to be atomic; SC offers neither (LWT rejected, counters rejected,
   `SET v = v - ?` is counter-only). On a correct SC system two concurrent transfers lose an update
   and the invariant breaks — the test cannot distinguish a bug from the model. Check: one paragraph
-  in the fork's README. DoD: paragraph present; no `sc-bank` namespace.
-- [ ] **2.6 `test-all` for SC.** New CLI entry `test-all-sc`: workloads `{sc-register,
+  in the fork's README. DoD: paragraph present; no `sc-bank` namespace. **Done 2026-11-03** —
+  README section "Strong Consistency workloads", fork commit `feat: test-all-sc`.
+- [x] **2.6 `test-all` for SC.** New CLI entry `test-all-sc`: workloads `{sc-register,
   sc-wr-register, sc-list-append, sc-batch-isolation}` × `standard-nemeses`, `--time-limit 120`.
   Check: `lein run test-all-sc --nemesis none --time-limit 20 …` runs 4 tests, `results.edn` for
-  each. DoD: 4 directories under `store/`, all `:valid? true`.
+  each. DoD: 4 directories under `store/`, all `:valid? true`. **Done 2026-11-03** — `lein run
+  test-all-sc` (fork commit `feat: test-all-sc`); `--time-limit` keeps Jepsen's default, SCT passes
+  its own (3.1). Check run with `--nemesis none --time-limit 20`: 4 directories, all `:valid? true`
+  (sc-register 196 ops, sc-wr-register 194, sc-list-append 212, sc-batch-isolation 204).
 
 ### Phase 3 — SCT test case, nemesis, gate
 
@@ -431,17 +453,35 @@ the Porcupine research reached in §5.3, and what keeps Knossos/Elle fast.
   event in `LOADERS_EVENTS`. Check: `uv run pytest unit_tests/unit/test_jepsen_results.py -q` with
   three fixture `results.edn` files (valid, invalid with Elle anomalies, unknown). DoD: green;
   `test_jepsen()` no longer uses `.ok` of the remoter result as the verdict.
-- [ ] **3.3 Clock nemesis prerequisites.** Jepsen's `:clock` nemesis compiles `bump-time.c` on each
+- [x] **3.3 Clock nemesis prerequisites.** Jepsen's `:clock` nemesis compiles `bump-time.c` on each
   node and uses `ntpdate`/`date`. Check on a local node: `which cc ntpdate`. DoD: either both found
   on the SCT GCE image, or `setup_jepsen()` installs `build-essential ntpdate` on DB nodes (as it
   already does for `tcpdump`, `jepsen_test.py:56-58`) and a `--nemesis clock --time-limit 60` run
-  ends `:valid? true` with a clock plot in `store/latest/`.
-- [ ] **3.4 Membership nemesis against SCT-provisioned nodes.** `:membership` decommissions and
+  ends `:valid? true` with a clock plot in `store/latest/`. **Done locally 2026-11-03** — the tier A
+  node image has `/usr/bin/cc` and `/usr/sbin/ntpdate` (`build-essential`, `ntpdate` from Jepsen's
+  own node Dockerfile); `sc-register --nemesis clock --time-limit 60`: `:valid? true`, 609 ops all
+  `:ok`, 16 nemesis ops (`strobe-clock`, `bump-clock`, `check-clock-offsets`), `clock-skew.png`
+  present. The SCT GCE image is still to be checked at 3.5 (`setup_jepsen()` may need to install
+  `build-essential ntpdate` on the DB nodes).
+- [x] **3.4 Membership nemesis against SCT-provisioned nodes.** `:membership` decommissions and
   re-adds nodes via `nodetool` and re-bootstraps with Jepsen's own seeds (`db.clj:329-340`). After
   1.2 this must use the node's existing `scylla.yaml`. Known SC blocker: topology changes wait on
   snapshot transfer (SCYLLADB-4753). Check: `--nemesis membership --time-limit 120` on the local
   cluster. DoD: run completes with a verdict (valid or an SC bug reference), or the nemesis is
-  excluded from `test-all-sc` with a comment naming SCYLLADB-4753.
+  excluded from `test-all-sc` with a comment naming SCYLLADB-4753. **Done locally 2026-11-03, one
+  harness bug fixed** — the first run emitted only `:pass`: `scylla.db/parse-nodetool-status-line`
+  expected loads like `598.11 KB` and current Scylla prints `2.11 MiB`, so every node view threw
+  `:nodetool-status-parse-error` and no node was ever "up" (fork commit `fix: parse nodetool status
+  loads in MiB`, with a unit test). Second run, 3 nodes, `sc-register --nemesis membership
+  --time-limit 120`: repairs, decommissions of n2 and n3, wipes, re-adds; `:valid? true`, 1164 ops
+  (628 ok, 499 fail, 37 info). The fails are availability during topology changes, which is what the
+  nemesis is for. The nemesis keeps upstream's 5 s `timeout` on `nodetool decommission`/`repair`
+  (`:timeout` means the command runs on while Jepsen moves on, and a wipe can land mid-decommission:
+  after the run n1 still listed the old host ids of the wiped nodes while n2/n3 rejoined with new
+  ones). `nodetool status` exits 4 on a node that is bootstrapping and `nodetool repair` exits 3
+  with `timeout 5`; both are mapped to "down"/`:info` by the nemesis, not errors. SCYLLADB-4753 did
+  not show on 3 nodes with 32 tablets; the 5-node runs of the bug hunt watch for it. The SCT GCE
+  side (3.5) still has to confirm `nodetool` and `sudo` work the same there.
 - [ ] **3.5 First cloud run.** Trigger the new job on GCE with `master:latest`.
   Check: Argus run exists, `jepsen-data` archive in S3, SCT log has one `JepsenEvent` per test.
   DoD: all tests `:valid? true` or each failure filed as a Scylla ticket with the `results.edn`
@@ -514,7 +554,14 @@ Open questions (need a human answer before the step they block):
    rights. (blocks Phase 1)
 6. Jira: SCYLLADB-42's scope says "investigate"; this plan implements. Confirm the ticket (or a new
    one) is the right place to track Phases 1–5, and whether 2027.1 (`SCYLLADB-5130`) is the target.
-7. With `commitlog_sync: periodic` an SC node refuses to restart after SIGKILL (step 2.1 (e)).
-   Is `commitlog_sync: batch` required for SC tables (then the SC test case and the local nodes set
-   it), or is an acknowledged-but-unsynced raft batch a Scylla bug? (blocks the `:kill` nemesis in
-   2.6 and 3.x; `strongly_consistent_tables_start_on_damaged_commitlog` is a local workaround only)
+7. ~~Does SC need `commitlog_sync: batch`?~~ **Answered 2026-11-03** (research note
+   `sc-commitlog-sync.md`): no. Raft batches are written with `force_sync`, so an acknowledged batch
+   is on disk under the default `periodic`; keep the default. The refusal to start after SIGKILL
+   (step 2.1 (e)) is the open bug [SCYLLADB-4853](https://scylladb.atlassian.net/browse/SCYLLADB-4853):
+   a sector past the write frontier is reported as corruption, not truncation. n1's log has its
+   signature for the refused segment: `commitlog_replayer - Corrupted file:
+   …/CommitLog-4-18014398583719723.variant.log. 4096 bytes skipped` right before `cannot replay the
+   raft log: segments [18014398583719723]`. Consequences: the `:kill` nemesis is blocked by
+   SCYLLADB-4853 on a stock node; `strongly_consistent_tables_start_on_damaged_commitlog` stays a
+   local workaround and **may drop committed entries**, so any anomaly seen after a kill-and-restart
+   with that flag on is triaged against SCYLLADB-4853 before it is called a bug.
