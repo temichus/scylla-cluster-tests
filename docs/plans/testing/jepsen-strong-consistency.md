@@ -371,14 +371,28 @@ the Porcupine research reached in §5.3, and what keeps Knossos/Elle fast.
   nemesis (2.6, 3.x) will hit this on every kill: either the SC test case must set `commitlog_sync:
   batch` (and this becomes a documented SC deployment requirement), or kill-and-restart of an SC node
   is an SC durability bug to file. Open question 7 below.
-- [ ] **2.2 `sc-wr-register`.** Elle rw-register. Keys are clustering rows inside one partition
+- [x] **2.2 `sc-wr-register`.** Elle rw-register. Keys are clustering rows inside one partition
   (`pk` fixed per generation, `ck` = register id); a transaction of several reads/writes is one
   single-partition `BATCH` (writes) or one `SELECT … WHERE pk = ? AND ck IN (…)` (reads).
   Checker: `elle.rw-register` with `:consistency-models [:strict-serializable]`
   `:linearizable-keys? true`. This is what Porcupine does not check: atomicity and isolation of a
   multi-row batch inside one partition (research §6 V6: "the only way to check single-partition
   BATCH atomicity"). Check and DoD as 2.1, plus the canary must name an anomaly type (`G1c`,
-  `G-single`, `lost-update`, …) in `results.edn`.
+  `G-single`, `lost-update`, …) in `results.edn`. **Done 2026-11-03** — `scylla.sc.wr-register`,
+  fork commit `feat: sc-wr-register`. `BEGIN BATCH` of `UPDATE`s and `ck IN (…)` are accepted on
+  SC. SC run: `:valid? true`, 611 txns all `:ok`, 182 multi-key (92 reads, 90 batches); canary:
+  `:valid? false`, 609 txns (602 ok, 7 info), `:anomaly-types (:G-single-item-realtime
+  :cyclic-versions)`, `:not #{:read-uncommitted}`. Cold review: no defects. What the plan got wrong
+  or left open: (a) "pk fixed per generation" is simply `pk = 0` for the whole run: Elle mints and
+  retires keys itself (`--key-count`, `--max-writes-per-key`), and one partition makes every txn
+  single-partition by construction instead of filtering most of them away as the old
+  `wr_register.clj` did. (b) Elle's generator mixes reads and writes in one txn and may repeat a
+  key; the workload keeps only all-read or all-write txns with distinct keys (a batch shares one
+  timestamp, so two writes to one cell would be ordered by value, not position). About a third of
+  the ops survive as multi-key txns, enough for the batch path. (c) `jepsen.independent` is not used
+  here: Elle's own key rotation is the equivalent, and `:info` txns are cheap for Elle. (d) The 2.1
+  "-1 for a missing row" rule does not apply: for Elle a `nil` read is the key's initial version, and
+  a `nil` after an `:ok` write is a realtime cycle; `-1` would be a value nobody wrote.
 - [ ] **2.3 `sc-list-append`.** Elle list-append on `list<bigint>`: `UPDATE t SET v = v + [?]`
   (no `IF`), `SELECT v`. Checker `elle.list-append`, `:strict-serializable`.
   Two unknowns this workload settles (research §13): are collections accepted on SC tables, and
