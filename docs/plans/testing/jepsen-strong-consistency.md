@@ -534,6 +534,30 @@ the Porcupine research reached in §5.3, and what keeps Knossos/Elle fast.
   `docs/jepsen-sc.md`: how to run locally, how to read `results.edn`, how to add a workload.
   Check: `uv run python -m sdcm.sct_config --help` (or the repo's doc generator) exits 0.
 
+### Bug hunt (local, tier A) — findings so far
+
+Running log, run table and draft bug reports live in the session notes (`jepsen-bug-hunt.md`,
+`bugs/`); this section keeps only what changes the plan.
+
+- **New Scylla bug candidate, committed SC data lost after a wall-clock jump.** Round 1 (3 nodes,
+  `test-all-sc --time-limit 300`): after `sc-register --nemesis clock`, Jepsen's end-of-test SIGKILL
+  left every node unable to start: `cannot replay the raft log: committed entries are missing:
+  <group> committed to 76 but read only to 0`. Not SCYLLADB-4853; the
+  `strongly_consistent_tables_start_on_damaged_commitlog` override does not cover it. Triage: the
+  start of each affected raft log sat in a commitlog segment that was recycled while the node ran.
+  Reproduced on a fresh cluster on the first try; a control run (no nemesis, same 300 s, same
+  SIGKILL) restarts cleanly; a 60 s clock run did not trigger it. Draft report
+  `bugs/sc-raft-replay-committed-entries-missing.md`. Consequence for the job: until fixed, every
+  clock test ends with an unbootable cluster, so 3.5/5.1 must run clock tests last or re-provision.
+- **Checker bug, not Scylla: Elle 0.2.5 rw-register false `:cyclic-versions`** with
+  `:linearizable-keys? true` (memoized downstream sets aliased and mutated). It failed
+  `sc-wr-register` on SC under partition and pause. Patched in the fork (`scylla.sc.elle-patch`,
+  regression test with the failing history); all 38 per-partition histories of those runs are valid
+  with the patch, the EC canary's anomalies are unchanged. Elle 0.2.8 rewrote the code but needs
+  JDK 21 (see 1.0). Draft upstream issue `bugs/elle-rw-register-linear-set-aliasing.md`.
+- Passed so far on SC (3 nodes, 300 s): all four workloads under partition and pause;
+  `sc-register` under clock.
+
 ## 6. Success Criteria
 
 - The job fails on an injected anomaly (EC canary) and passes on SC under all six nemesis sets.
