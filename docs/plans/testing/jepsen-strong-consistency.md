@@ -386,13 +386,13 @@ the Porcupine research reached in §5.3, and what keeps Knossos/Elle fast.
   `docs/pipeline-labels/taxonomy.yaml` if missing.
   Check: `uv run pytest unit_tests/unit/test_test_metadata.py unit_tests/unit/config -q` and
   `utils/lint_test_cases.sh`. DoD: green.
-- [ ] **3.2 Parse `results.edn` instead of exit codes.** `jepsen_test.py`: after each command, pull
+- [x] **3.2 Parse `results.edn` instead of exit codes.** `jepsen_test.py`: after each command, pull
   `store/*/results.edn` from the loader, parse `:valid?` per test (true / false / `:unknown`).
   `false` → `JepsenEvent(severity=CRITICAL)` naming workload, nemesis, anomaly types; `:unknown` →
   WARNING; a missing `results.edn` → ERROR "infrastructure" (lein/ssh/deps failure). Register the
   event in `LOADERS_EVENTS`. Check: `uv run pytest unit_tests/unit/test_jepsen_results.py -q` with
   three fixture `results.edn` files (valid, invalid with Elle anomalies, unknown). DoD: green;
-  `test_jepsen()` no longer uses `.ok` of the remoter result as the verdict.
+  `test_jepsen()` no longer uses `.ok` of the remoter result as the verdict. **Done 2026-11-03** — `sdcm.utils.jepsen`: a small EDN reader (no EDN library in the deps; `#tag{}` literals are their element) and `JepsenTestResult`; `JepsenEvent` in `sdcm.sct_events.loaders`, in `LOADERS_EVENTS`, `JepsenEvent: CRITICAL` in `severities.yaml`. `jepsen_test.py` tars `results.edn` + `history.txt` of every test off the loader after each command into `logdir/jepsen/<name>/<timestamp>/` (this is also 4.3) and judges the command by them. Knossos results have no `:anomaly-types`: the invalid checker's key (`linearizable`) is reported instead. Fixtures are the real `results.edn` of the 2.1/2.2 runs. `uv run pytest unit_tests/unit/test_jepsen_results.py -q`: 9 passed.
 - [ ] **3.3 Clock nemesis prerequisites.** Jepsen's `:clock` nemesis compiles `bump-time.c` on each
   node and uses `ntpdate`/`date`. Check on a local node: `which cc ntpdate`. DoD: either both found
   on the SCT GCE image, or `setup_jepsen()` installs `build-essential ntpdate` on DB nodes (as it

@@ -89,6 +89,7 @@ CassandraStressLogEvent.RackAwarePolicy: NORMAL
 CassandraStressLogEvent.SchemaDisagreement: WARNING
 CqlStressCassandraStressLogEvent.ReadValidationError: CRITICAL
 SchemaDisagreementErrorEvent: ERROR
+JepsenEvent: CRITICAL
 ScyllaBenchLogEvent.ConsistencyError: ERROR
 ScyllaBenchLogEvent.DataValidationError: CRITICAL
 ScyllaBenchLogEvent.ParseDistributionError: CRITICAL

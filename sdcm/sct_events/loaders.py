@@ -151,6 +151,22 @@ class CassandraStressLogEvent(LogEvent, abstract=True):
     SchemaDisagreement: Type[LogEventProtocol]
 
 
+class JepsenEvent(SctEvent):
+    """The verdict of one Jepsen test (results.edn), or a harness failure that left none.
+
+    CRITICAL: a checker found a consistency violation. WARNING: the checker could not decide
+    (:unknown). ERROR: no results.edn, the harness itself failed (ssh, lein, nodes).
+    """
+
+    def __init__(self, message: str, severity: Severity = Severity.NORMAL):
+        super().__init__(severity=severity)
+        self.message = message
+
+    @property
+    def msgfmt(self):
+        return super().msgfmt + ": {0.message}"
+
+
 class SchemaDisagreementErrorEvent(SctEvent):
     """Thrown when schema mismatch is detected with collected data for bug report."""
 

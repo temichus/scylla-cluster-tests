@@ -35,6 +35,7 @@ LOADERS_EVENTS = {
     "YcsbStressEvent",
     "NdbenchStressEvent",
     "CDCReaderStressEvent",
+    "JepsenEvent",
 }
 
 # GCE reports a host-maintenance live migration as a `GceInstanceEvent` with `type ==

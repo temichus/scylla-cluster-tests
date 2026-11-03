@@ -1,0 +1,392 @@
+{:perf {:latency-graph {:valid? true},
+        :rate-graph {:valid? true},
+        :valid? true},
+ :clock {:valid? true},
+ :stats {:valid? true,
+         :count 609,
+         :ok-count 602,
+         :fail-count 0,
+         :info-count 7,
+         :by-f {:txn {:valid? true,
+                      :count 609,
+                      :ok-count 602,
+                      :fail-count 0,
+                      :info-count 7}}},
+ :exceptions {:valid? true},
+ :workload {:valid? false,
+            :anomaly-types (:G-single-item-realtime :cyclic-versions),
+            :anomalies {:G-single-item-realtime [{:cycle [#jepsen.history.Op{:index 413,
+                                                                             :time 22097385800,
+                                                                             :type :ok,
+                                                                             :process 0,
+                                                                             :f :txn,
+                                                                             :value [[:r
+                                                                                      16
+                                                                                      nil]]}
+                                                          #jepsen.history.Op{:index 411,
+                                                                             :time 22039925633,
+                                                                             :type :ok,
+                                                                             :process 14,
+                                                                             :f :txn,
+                                                                             :value [[:w
+                                                                                      5
+                                                                                      40]
+                                                                                     [:w
+                                                                                      15
+                                                                                      29]
+                                                                                     [:w
+                                                                                      16
+                                                                                      12]]}
+                                                          #jepsen.history.Op{:index 413,
+                                                                             :time 22097385800,
+                                                                             :type :ok,
+                                                                             :process 0,
+                                                                             :f :txn,
+                                                                             :value [[:r
+                                                                                      16
+                                                                                      nil]]}],
+                                                  :steps ({:key 16,
+                                                           :value nil,
+                                                           :value' 12,
+                                                           :type :rw,
+                                                           :a-mop-index 0,
+                                                           :b-mop-index 2}
+                                                          {:type :realtime,
+                                                           :a' #jepsen.history.Op{:index 411,
+                                                                                  :time 22039925633,
+                                                                                  :type :ok,
+                                                                                  :process 14,
+                                                                                  :f :txn,
+                                                                                  :value [[:w
+                                                                                           5
+                                                                                           40]
+                                                                                          [:w
+                                                                                           15
+                                                                                           29]
+                                                                                          [:w
+                                                                                           16
+                                                                                           12]]},
+                                                           :b #jepsen.history.Op{:index 412,
+                                                                                 :time 22092408008,
+                                                                                 :type :invoke,
+                                                                                 :process 0,
+                                                                                 :f :txn,
+                                                                                 :value [[:r
+                                                                                          16
+                                                                                          nil]]}}),
+                                                  :type :G-single-item-realtime}
+                                                 {:cycle [#jepsen.history.Op{:index 1049,
+                                                                             :time 52283673522,
+                                                                             :type :ok,
+                                                                             :process 13,
+                                                                             :f :txn,
+                                                                             :value [[:r
+                                                                                      28
+                                                                                      nil]]}
+                                                          #jepsen.history.Op{:index 1045,
+                                                                             :time 52129068313,
+                                                                             :type :ok,
+                                                                             :process 11,
+                                                                             :f :txn,
+                                                                             :value [[:w
+                                                                                      26
+                                                                                      76]
+                                                                                     [:w
+                                                                                      28
+                                                                                      44]]}
+                                                          #jepsen.history.Op{:index 1047,
+                                                                             :time 52219036855,
+                                                                             :type :ok,
+                                                                             :process 42,
+                                                                             :f :txn,
+                                                                             :value [[:r
+                                                                                      28
+                                                                                      44]
+                                                                                     [:r
+                                                                                      26
+                                                                                      76]]}
+                                                          #jepsen.history.Op{:index 1049,
+                                                                             :time 52283673522,
+                                                                             :type :ok,
+                                                                             :process 13,
+                                                                             :f :txn,
+                                                                             :value [[:r
+                                                                                      28
+                                                                                      nil]]}],
+                                                  :steps ({:key 28,
+                                                           :value nil,
+                                                           :value' 44,
+                                                           :type :rw,
+                                                           :a-mop-index 0,
+                                                           :b-mop-index 1}
+                                                          {:type :wr,
+                                                           :key 26,
+                                                           :value 76,
+                                                           :a-mop-index 0,
+                                                           :b-mop-index 1}
+                                                          {:type :realtime,
+                                                           :a' #jepsen.history.Op{:index 1047,
+                                                                                  :time 52219036855,
+                                                                                  :type :ok,
+                                                                                  :process 42,
+                                                                                  :f :txn,
+                                                                                  :value [[:r
+                                                                                           28
+                                                                                           44]
+                                                                                          [:r
+                                                                                           26
+                                                                                           76]]},
+                                                           :b #jepsen.history.Op{:index 1048,
+                                                                                 :time 52281617272,
+                                                                                 :type :invoke,
+                                                                                 :process 13,
+                                                                                 :f :txn,
+                                                                                 :value [[:r
+                                                                                          28
+                                                                                          nil]]}}),
+                                                  :type :G-single-item-realtime}
+                                                 {:cycle [#jepsen.history.Op{:index 493,
+                                                                             :time 25814543719,
+                                                                             :type :ok,
+                                                                             :process 7,
+                                                                             :f :txn,
+                                                                             :value [[:r
+                                                                                      17
+                                                                                      nil]]}
+                                                          #jepsen.history.Op{:index 491,
+                                                                             :time 25658701135,
+                                                                             :type :ok,
+                                                                             :process 6,
+                                                                             :f :txn,
+                                                                             :value [[:w
+                                                                                      17
+                                                                                      2]
+                                                                                     [:w
+                                                                                      3
+                                                                                      6]
+                                                                                     [:w
+                                                                                      6
+                                                                                      88]]}
+                                                          #jepsen.history.Op{:index 493,
+                                                                             :time 25814543719,
+                                                                             :type :ok,
+                                                                             :process 7,
+                                                                             :f :txn,
+                                                                             :value [[:r
+                                                                                      17
+                                                                                      nil]]}],
+                                                  :steps ({:key 17,
+                                                           :value nil,
+                                                           :value' 2,
+                                                           :type :rw,
+                                                           :a-mop-index 0,
+                                                           :b-mop-index 0}
+                                                          {:type :realtime,
+                                                           :a' #jepsen.history.Op{:index 491,
+                                                                                  :time 25658701135,
+                                                                                  :type :ok,
+                                                                                  :process 6,
+                                                                                  :f :txn,
+                                                                                  :value [[:w
+                                                                                           17
+                                                                                           2]
+                                                                                          [:w
+                                                                                           3
+                                                                                           6]
+                                                                                          [:w
+                                                                                           6
+                                                                                           88]]},
+                                                           :b #jepsen.history.Op{:index 492,
+                                                                                 :time 25810650719,
+                                                                                 :type :invoke,
+                                                                                 :process 7,
+                                                                                 :f :txn,
+                                                                                 :value [[:r
+                                                                                          17
+                                                                                          nil]]}}),
+                                                  :type :G-single-item-realtime}],
+                        :cyclic-versions [{:key 7,
+                                           :scc #{7
+                                                  20
+                                                  39
+                                                  40
+                                                  13
+                                                  22
+                                                  36
+                                                  25},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 7,
+                                           :scc #{99 91 90},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 7,
+                                           :scc #{118 125},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 27,
+                                           :scc #{65 69},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 15,
+                                           :scc #{54
+                                                  15
+                                                  22
+                                                  36
+                                                  43
+                                                  29
+                                                  11
+                                                  5
+                                                  14
+                                                  42},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 15,
+                                           :scc #{99 76},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 21,
+                                           :scc #{61 67},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 13,
+                                           :scc #{9 8},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 13,
+                                           :scc #{50 30},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 13,
+                                           :scc #{56 52},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 13,
+                                           :scc #{100 76},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 22,
+                                           :scc #{121 103},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 29,
+                                           :scc #{9 10 8},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 6,
+                                           :scc #{39 46 56},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 6,
+                                           :scc #{78 71 63},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 28,
+                                           :scc #{nil 31 44 6 3 30},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 25,
+                                           :scc #{65 70 75 68 80},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 17,
+                                           :scc #{nil 24 50 32 61 2},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 12,
+                                           :scc #{57 52},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 23,
+                                           :scc #{95 92 64 112 83 98},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 11,
+                                           :scc #{85 111 103 96 84},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 9,
+                                           :scc #{4 5},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 9,
+                                           :scc #{46 19 10},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 9,
+                                           :scc #{72 85 82 68 84},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 5,
+                                           :scc #{6 5},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 5,
+                                           :scc #{32 28},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 14,
+                                           :scc #{20
+                                                  58
+                                                  44
+                                                  51
+                                                  11
+                                                  53
+                                                  16
+                                                  10},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 26,
+                                           :scc #{21 13},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 26,
+                                           :scc #{82 83},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 26,
+                                           :scc #{99 90 89 96},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 16,
+                                           :scc #{nil 12},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 16,
+                                           :scc #{20 27 31 19},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 8,
+                                           :scc #{31 29 34},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}
+                                          {:key 8,
+                                           :scc #{62 59},
+                                           :sources [:initial-state
+                                                     :linearizable-keys]}]},
+            :not #{:read-uncommitted},
+            :also-not #{:causal-cerone
+                        :consistent-view
+                        :cursor-stability
+                        :forward-consistent-view
+                        :monotonic-atomic-view
+                        :monotonic-snapshot-read
+                        :monotonic-view
+                        :parallel-snapshot-isolation
+                        :prefix
+                        :read-atomic
+                        :read-committed
+                        :repeatable-read
+                        :serializable
+                        :snapshot-isolation
+                        :strong-read-committed
+                        :strong-read-uncommitted
+                        :strong-serializable
+                        :strong-session-read-committed
+                        :strong-session-read-uncommitted
+                        :strong-session-serializable
+                        :strong-session-snapshot-isolation
+                        :strong-snapshot-isolation
+                        :update-atomic
+                        :update-serializable}},
+ :valid? false}
