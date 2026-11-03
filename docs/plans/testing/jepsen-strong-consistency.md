@@ -339,14 +339,38 @@ produce `:valid? false`. A checker that never says "no" is not a checker. Each w
 `jepsen.independent` (keys minted once, ~100–200 ops per key, never reused) — the same conclusion
 the Porcupine research reached in §5.3, and what keeps Knossos/Elle fast.
 
-- [ ] **2.1 `sc-register`.** One row per key: `INSERT`/`UPDATE … SET v = ?` (no `IF`), `SELECT v`.
+- [x] **2.1 `sc-register`.** One row per key: `INSERT`/`UPDATE … SET v = ?` (no `IF`), `SELECT v`.
   Checker: `checker/linearizable` with `model/register`, wrapped in `independent/checker`.
   Writes that time out stay `:info` (indeterminate) — Knossos handles that natively.
   Check: `lein run test --workload sc-register --nemesis none --time-limit 60 --concurrency 5n`
   on the local SC cluster, then `grep ':valid? true' store/latest/results.edn`; then the canary.
   DoD: SC run `:valid? true`; EC canary `:valid? false` with a Knossos counterexample in `results.edn`.
   This duplicates Porcupine's check on purpose: an independent checker on the same semantics is
-  the cheapest cross-validation available, and it costs one file.
+  the cheapest cross-validation available, and it costs one file. **Done 2026-11-03** — `scylla.sc.register`,
+  fork commit `feat: sc-register` on `sc-harness`. SC run: `:valid? true`, 601 ops all `:ok`; canary
+  (`--no-sc --nemesis partition --read-consistency one --write-consistency one`, lowercase: the flag
+  validates against lowercase keywords): `:valid? false`, 6 keys with a Knossos counterexample
+  (`write 4` then `read 1`, `Inconsistent "4≠1"`). What the plan got wrong or did not know:
+  (a) SC rejects writes at the driver default `LOCAL_ONE` (`Strongly consistent writes must use
+  QUORUM/LOCAL_QUORUM consistency level`), so `scylla.sc.client` `read-opts`/`write-opts` default to
+  QUORUM — the check command and the SCT job pass no `--write-consistency`. (b) The generator of
+  `jepsen.tests.linearizable-register` emits `:cas` ops, which `model/register` cannot step; the
+  workload builds its own `gen/mix [r w]` under `independent/concurrent-generator 5`, and uses only
+  the namespace's `r`/`w` functions. (c) Data outlives a test (1.2), so `CREATE KEYSPACE IF NOT
+  EXISTS` kept the first run's SC/EC keyspace and its rows: `scylla.sc.db` now drops the keyspace in
+  `setup!`; the manual `DROP KEYSPACE` before and after the canary is no longer needed. (d) A missing
+  row reads as `-1` with `(model/register -1)`: Knossos treats a `nil` read as unknown, which would
+  have hidden a lost write and weakened the canary (an EC replica with no row at all). (e) **Scylla
+  finding, needs a human (§7):** Jepsen's end-of-run SIGKILL left n1 with a torn commitlog segment
+  and the SC node refused to start: `cannot replay the raft log: segments [...] could not be read in
+  full, and this shard hosts 16 strongly consistent raft group(s). The unread bytes may have held raft
+  batches this node acknowledged`. Cause: `commitlog_sync: periodic` (the default, 10 s) acknowledges
+  raft batches before they are on disk. The local nodes now run with
+  `strongly_consistent_tables_start_on_damaged_commitlog: true` (set live in the containers, not in
+  `docker/jepsen-local`), which is safe only because every run drops the keyspace. The `:kill`
+  nemesis (2.6, 3.x) will hit this on every kill: either the SC test case must set `commitlog_sync:
+  batch` (and this becomes a documented SC deployment requirement), or kill-and-restart of an SC node
+  is an SC durability bug to file. Open question 7 below.
 - [ ] **2.2 `sc-wr-register`.** Elle rw-register. Keys are clustering rows inside one partition
   (`pk` fixed per generation, `ck` = register id); a transaction of several reads/writes is one
   single-partition `BATCH` (writes) or one `SELECT … WHERE pk = ? AND ck IN (…)` (reads).
@@ -476,3 +500,7 @@ Open questions (need a human answer before the step they block):
    rights. (blocks Phase 1)
 6. Jira: SCYLLADB-42's scope says "investigate"; this plan implements. Confirm the ticket (or a new
    one) is the right place to track Phases 1–5, and whether 2027.1 (`SCYLLADB-5130`) is the target.
+7. With `commitlog_sync: periodic` an SC node refuses to restart after SIGKILL (step 2.1 (e)).
+   Is `commitlog_sync: batch` required for SC tables (then the SC test case and the local nodes set
+   it), or is an acknowledged-but-unsynced raft batch a Scylla bug? (blocks the `:kill` nemesis in
+   2.6 and 3.x; `strongly_consistent_tables_start_on_damaged_commitlog` is a local workaround only)
