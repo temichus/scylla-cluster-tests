@@ -60,6 +60,35 @@ Results: `store/latest/results.edn` in the fork checkout (`:valid? true` on succ
 `store/latest/jepsen.log`, and per-node logs under `store/latest/n*/`. The first `lein run`
 downloads the dependency tree (~1 min); later runs take ~30 s for `--workload none`.
 
+## Reading `results.edn`
+
+One file per test under `store/<test name>/<timestamp>/`; `store/latest` points at the last run.
+The top-level `:valid?` is the verdict: `true`, `false`, or `:unknown` when the checker gave up
+(Knossos search timeout). The map has one entry per checker:
+
+| Key | What it says |
+| --- | --- |
+| `:workload` | the consistency checker. Elle lists `:anomaly-types` (`:G-single-item-realtime`, `:cyclic-versions`, …) and the cycles under `:anomalies`; Knossos (`jepsen.independent`) nests per-key `:results {<key> {:linearizable {:valid? false :op … :previous-ok …}}}` with the op that cannot be explained. |
+| `:stats` | `:ok-count`, `:fail-count`, `:info-count` overall and `:by-f`. On SC, writes must be `:ok` or `:info` (indeterminate), never `:fail` once sent; a green run with every write `:info` proves nothing. |
+| `:exceptions` | `:valid? false` on any driver exception the client did not map; the run is then a harness failure, not a verdict. |
+| `:perf`, `:clock` | graphs only. |
+
+SCT reads the same file: `sdcm.utils.jepsen.JepsenTestResult` (an EDN reader is in the same module),
+`jepsen_test.py` turns each test into a `JepsenEvent` (CRITICAL on `false`, WARNING on `:unknown`,
+ERROR when no `results.edn` was written) and one Argus row per (workload, nemesis). The verdict is
+never the exit code of `lein`.
+
+## Adding a workload
+
+Copy `src/scylla/sc/register.clj` (Knossos, one row per key) or `src/scylla/sc/wr_register.clj`
+(Elle, single-partition batches), register it in `scylla.core/workloads`, and keep the client rules
+of plan §2.6: every statement goes through `scylla.sc.client/execute`, `with-errors` wraps
+`invoke!`, `retry-each` only around the `CREATE TABLE` in `setup!`, no `IF`, no `USING TIMESTAMP`,
+no counters, lists or multi-partition batches (SC rejects them with `InvalidQueryException`). Tables
+live in keyspace `scylla.sc.db/keyspace` (`jepsen_sc`), which `scylla.sc.db` drops and recreates
+per run. Then the two runs every workload must pass: SC `:valid? true`, and the EC canary
+(`--no-sc --nemesis partition --read-consistency one --write-consistency one`) `:valid? false`.
+
 Interactive shell on the control node: `bash bin/console`. Results browser:
 `docker exec -d jepsen-control sh -c 'cd /jepsen/scylla && lein run serve'` then
 `docker port jepsen-control 8080`.

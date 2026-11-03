@@ -436,9 +436,9 @@ the Porcupine research reached in §5.3, and what keeps Knossos/Elle fast.
   and the LWT defaults in `test_default.yaml:181-188`, or re-point them at `test-all-sc`. Decision
   in §7. Check: `grep -rn "jepsen_with_raft\|jepsen-all" jenkins-pipelines test-cases` empty after
   deletion. DoD: `uv run pytest unit_tests/unit/lint unit_tests/unit/test_staging_trigger.py -q` green.
-- [ ] **5.4 Docs.** `docs/configuration_options/jepsen-tests.md` regenerated; a short
+- [x] **5.4 Docs.** `docs/configuration_options/jepsen-tests.md` regenerated; a short
   `docs/jepsen-sc.md`: how to run locally, how to read `results.edn`, how to add a workload.
-  Check: `uv run python -m sdcm.sct_config --help` (or the repo's doc generator) exits 0.
+  Check: `uv run python -m sdcm.sct_config --help` (or the repo's doc generator) exits 0. **Done 2026-11-03** — `docs/jepsen-sc.md`: "Reading results.edn" and "Adding a workload". `./sct.py update-conf-docs` exits 0 with no diff (no option changed).
 
 ## 6. Success Criteria
 
