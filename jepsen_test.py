@@ -16,6 +16,7 @@ import tarfile
 from functools import partial
 from pathlib import Path
 
+from sdcm.argus_results import send_jepsen_results_to_argus
 from sdcm.remote import shell_script_cmd
 from sdcm.sct_events import Severity
 from sdcm.sct_events.loaders import JepsenEvent
@@ -112,6 +113,8 @@ class JepsenTest(ClusterTester):
         if not results:
             JepsenEvent(f"infrastructure: no results.edn written by `{jepsen_cmd}'", severity=Severity.ERROR).publish()
             return False
+        # Argus first: a CRITICAL event kills the test.
+        send_jepsen_results_to_argus(self.test_config.argus_client(), results)
         for result in results:
             jepsen_event(result).publish()
         return all(result.valid is not False for result in results)

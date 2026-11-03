@@ -193,6 +193,42 @@ class ManagerSnapshotDetails(StaticGenericResultTable):
         ]
 
 
+class JepsenResult(StaticGenericResultTable):
+    """One row per Jepsen test (workload / nemesis); `invalid` is 1 on a consistency violation."""
+
+    class Meta:
+        name = "Jepsen SC"
+        description = "Jepsen checker verdict per (workload, nemesis), from results.edn"
+        Columns = [
+            ColumnMetadata(name="valid", unit="", type=ResultType.TEXT),
+            ColumnMetadata(name="invalid", unit="count", type=ResultType.INTEGER, higher_is_better=False),
+            ColumnMetadata(name="ok_count", unit="ops", type=ResultType.INTEGER),
+            ColumnMetadata(name="fail_count", unit="ops", type=ResultType.INTEGER),
+            ColumnMetadata(name="info_count", unit="ops", type=ResultType.INTEGER),
+            ColumnMetadata(name="anomalies", unit="", type=ResultType.TEXT),
+        ]
+        ValidationRules = {
+            "invalid": ValidationRule(fixed_limit=0),
+        }
+
+
+def send_jepsen_results_to_argus(argus_client: ArgusClient, results: list) -> None:
+    """results: sdcm.utils.jepsen.JepsenTestResult, one per Jepsen test."""
+    if not argus_client:
+        LOGGER.warning("Will not submit to argus - no client initialized")
+        return
+    table = JepsenResult()
+    for result in results:
+        status = {True: Status.PASS, False: Status.ERROR, None: Status.WARNING}[result.valid]
+        table.add_result(column="valid", row=result.row, value=str(result.valid).lower(), status=status)
+        table.add_result(column="invalid", row=result.row, value=int(result.valid is False), status=status)
+        table.add_result(column="ok_count", row=result.row, value=result.ok_count, status=Status.UNSET)
+        table.add_result(column="fail_count", row=result.row, value=result.fail_count, status=Status.UNSET)
+        table.add_result(column="info_count", row=result.row, value=result.info_count, status=Status.UNSET)
+        table.add_result(column="anomalies", row=result.row, value=", ".join(result.anomalies), status=status)
+    submit_results_to_argus(argus_client, table)
+
+
 class MigratorBenchmarkResult(StaticGenericResultTable):
     class Meta:
         name = "spark-migrator - benchmark"

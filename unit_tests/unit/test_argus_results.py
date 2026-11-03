@@ -18,12 +18,15 @@ import pytest
 from argus.client.generic_result import Cell, Status
 
 from sdcm.argus_results import (
+    JepsenResult,
     ReactorStallStatsResult,
     send_iotune_results_to_argus,
+    send_jepsen_results_to_argus,
     send_microbenchmark_result_to_argus,
     send_result_to_argus,
     LatencyCalculatorMixedResult,
 )
+from sdcm.utils.jepsen import JepsenTestResult, parse_edn
 
 
 def test_send_latency_decorator_result_to_argus(test_data_dir):
@@ -179,3 +182,40 @@ def test_send_microbenchmark_result_to_argus_release_stats():
     assert {cell["column"]: cell["value"] for cell in submitted["results"]} == RELEASE_MICROBENCHMARK_STATS
     assert {column["name"] for column in submitted["meta"]["columns_meta"]} == set(RELEASE_MICROBENCHMARK_STATS)
     assert submitted["meta"]["validation_rules"]["instructions_per_op"]["fixed_limit"] == 40000.0
+
+
+def test_send_jepsen_results_to_argus(test_data_dir):
+    argus_mock = MagicMock()
+    results = [
+        JepsenTestResult.from_results(
+            "sc-register lwt", parse_edn((test_data_dir / "jepsen" / "sc-register-valid.edn").read_text())
+        ),
+        JepsenTestResult.from_results(
+            "sc-wr-register lwt wc:one rc:one partition",
+            parse_edn((test_data_dir / "jepsen" / "sc-wr-register-canary-elle.edn").read_text()),
+        ),
+    ]
+    send_jepsen_results_to_argus(argus_client=argus_mock, results=results)
+    argus_mock.submit_results.assert_called_once_with(
+        JepsenResult(
+            results=[
+                Cell(column="valid", row="sc-register / none", value="true", status=Status.PASS),
+                Cell(column="invalid", row="sc-register / none", value=0, status=Status.PASS),
+                Cell(column="ok_count", row="sc-register / none", value=601, status=Status.UNSET),
+                Cell(column="fail_count", row="sc-register / none", value=0, status=Status.UNSET),
+                Cell(column="info_count", row="sc-register / none", value=0, status=Status.UNSET),
+                Cell(column="anomalies", row="sc-register / none", value="", status=Status.PASS),
+                Cell(column="valid", row="sc-wr-register / partition", value="false", status=Status.ERROR),
+                Cell(column="invalid", row="sc-wr-register / partition", value=1, status=Status.ERROR),
+                Cell(column="ok_count", row="sc-wr-register / partition", value=602, status=Status.UNSET),
+                Cell(column="fail_count", row="sc-wr-register / partition", value=0, status=Status.UNSET),
+                Cell(column="info_count", row="sc-wr-register / partition", value=7, status=Status.UNSET),
+                Cell(
+                    column="anomalies",
+                    row="sc-wr-register / partition",
+                    value="G-single-item-realtime, cyclic-versions",
+                    status=Status.ERROR,
+                ),
+            ]
+        )
+    )

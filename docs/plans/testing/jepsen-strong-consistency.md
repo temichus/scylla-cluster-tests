@@ -411,11 +411,11 @@ the Porcupine research reached in §5.3, and what keeps Knossos/Elle fast.
 
 ### Phase 4 — Argus and artifacts
 
-- [ ] **4.1 Argus table.** `StaticGenericResultTable` "Jepsen SC": one row per (workload, nemesis)
+- [x] **4.1 Argus table.** `StaticGenericResultTable` "Jepsen SC": one row per (workload, nemesis)
   with `valid`, `ok_count`, `fail_count`, `info_count`, `anomalies` (comma-joined), `duration_s`;
   `ValidationRule(fixed_limit=0)` on invalid count. Submit from `test_jepsen()` (nothing calls
   `submit_results_to_argus` unless the tester does — research §10.5). Check: `uv run pytest
-  unit_tests/unit/test_argus_results.py -k jepsen -q`. DoD: green; row visible in the 3.5 Argus run.
+  unit_tests/unit/test_argus_results.py -k jepsen -q`. DoD: green; row visible in the 3.5 Argus run. **Done 2026-11-03** — `JepsenResult` ("Jepsen SC") in `sdcm/argus_results.py`: `valid`, `invalid` (0/1, `ValidationRule(fixed_limit=0)`), `ok_count`, `fail_count`, `info_count`, `anomalies`; no `duration_s`: `results.edn` carries no duration and `history.txt` no timestamps. Submitted per command before the events are published, since a CRITICAL event kills the test. `uv run pytest unit_tests/unit/test_argus_results.py -k jepsen -q`: 1 passed. Row visible in Argus: needs 3.5.
 - [ ] **4.2 Fix the viewer.** `sdcm/utils/jepsen.py:82-83`: download by the archive's real name and
   extract with `tar --zstd` (or `tar -xaf`). Check: `hydra investigate show-jepsen-results <test_id>`
   against the 3.5 run. DoD: the Jepsen web UI opens and shows the runs.
