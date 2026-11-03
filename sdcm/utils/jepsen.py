@@ -12,6 +12,7 @@
 # Copyright (c) 2021 ScyllaDB
 
 import json
+import os
 import re
 import uuid
 import logging
@@ -20,6 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 from functools import cached_property
+from urllib.parse import urlparse
 
 from sdcm.utils.common import list_logs_by_test_id, get_free_port
 from sdcm.utils.docker_utils import ContainerManager, Container, DockerException
@@ -27,6 +29,8 @@ from sdcm.utils.docker_utils import ContainerManager, Container, DockerException
 
 JEPSEN_IMAGE = "docker.io/scylladb/hydra-loaders:jepsen-20240729"
 JEPSEN_RESULTS_PORT = 8080
+# The viewer needs a Jepsen project around an archived store/ to run `lein run serve`.
+JEPSEN_REPO = "https://github.com/scylladb/jepsen.git"
 
 LOGGER = logging.getLogger(__name__)
 
@@ -227,8 +231,14 @@ class JepsenResults:
     def restore_jepsen_data(self, test_id):
         if jepsen_data_link := self.get_jepsen_data_archive_link(test_id):
             LOGGER.info("Restore Jepsen data and download all dependecies.")
-            self.runcmd(f"wget --no-verbose -O jepsen_data.tar.gz {jepsen_data_link}")
-            self.runcmd("tar xzf jepsen_data.tar.gz")
+            archive = os.path.basename(urlparse(jepsen_data_link).path)  # .tar.zst, .tar.gz for old runs
+            self.runcmd(f"wget --no-verbose -O '{archive}' '{jepsen_data_link}'")
+            self.runcmd("command -v zstd >/dev/null || (apt-get -qq update && apt-get -qq install -y zstd)")
+            # The collector archives store/ only; archives of older runs hold the whole clone.
+            self.runcmd(
+                f"tar -xaf '{archive}' && if [ ! -d jepsen-scylla ]; then"
+                f" git clone --depth 1 {JEPSEN_REPO} jepsen-scylla && mv store jepsen-scylla/; fi"
+            )
             self.runcmd("cd jepsen-scylla && lein deps")
             return True
         return False

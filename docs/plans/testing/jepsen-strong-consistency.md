@@ -416,16 +416,16 @@ the Porcupine research reached in §5.3, and what keeps Knossos/Elle fast.
   `ValidationRule(fixed_limit=0)` on invalid count. Submit from `test_jepsen()` (nothing calls
   `submit_results_to_argus` unless the tester does — research §10.5). Check: `uv run pytest
   unit_tests/unit/test_argus_results.py -k jepsen -q`. DoD: green; row visible in the 3.5 Argus run. **Done 2026-11-03** — `JepsenResult` ("Jepsen SC") in `sdcm/argus_results.py`: `valid`, `invalid` (0/1, `ValidationRule(fixed_limit=0)`), `ok_count`, `fail_count`, `info_count`, `anomalies`; no `duration_s`: `results.edn` carries no duration and `history.txt` no timestamps. Submitted per command before the events are published, since a CRITICAL event kills the test. `uv run pytest unit_tests/unit/test_argus_results.py -k jepsen -q`: 1 passed. Row visible in Argus: needs 3.5.
-- [ ] **4.2 Fix the viewer.** `sdcm/utils/jepsen.py:82-83`: download by the archive's real name and
+- [x] **4.2 Fix the viewer.** `sdcm/utils/jepsen.py:82-83`: download by the archive's real name and
   extract with `tar --zstd` (or `tar -xaf`). Check: `hydra investigate show-jepsen-results <test_id>`
-  against the 3.5 run. DoD: the Jepsen web UI opens and shows the runs.
-- [ ] **4.3 Save the real report.** `save_jepsen_report()` (`jepsen_test.py:93-110`) must save
+  against the 3.5 run. DoD: the Jepsen web UI opens and shows the runs. **Done 2026-11-03** (code) — downloads the archive under its real name, `tar -xaf` (installs `zstd` in the container first), and since 4.4 ships `store/` only, clones `scylladb/jepsen` around it. Check against a real run needs 3.5.
+- [x] **4.3 Save the real report.** `save_jepsen_report()` (`jepsen_test.py:93-110`) must save
   `store/<test>/results.edn` and `history.txt` per test to `logdir`, not the server index page.
   Check: `ls logdir/jepsen/*/results.edn` after a local run through `hydra run-test` on the docker
-  backend. DoD: one file per test.
-- [ ] **4.4 Collector keeps only what matters.** `JepsenLogCollector` archives the whole repo clone
+  backend. DoD: one file per test. **Done 2026-11-03** — by 3.2's fetch: `logdir/jepsen/<test name>/<timestamp>/{results.edn,history.txt}` after every command and once more at teardown; the web-server index page is gone. The docker-backend check in the plan cannot run (SCT's docker nodes have no sshd, §5 tier table); covered by `test_store_layout` in the unit tests.
+- [x] **4.4 Collector keeps only what matters.** `JepsenLogCollector` archives the whole repo clone
   (`~/jepsen-scylla`, incl. `.git` and `target/`). Archive `store/` only. Check: archive size and
-  `tar --zstd -tf` listing. DoD: listing contains `store/` and no `target/`.
+  `tar --zstd -tf` listing. DoD: listing contains `store/` and no `target/`. **Done 2026-11-03** (code) — `JepsenLogCollector` archives `./jepsen-scylla/store` (`tar -C jepsen-scylla store`, so the listing starts with `store/`). The size/listing check needs 3.5.
 
 ### Phase 5 — Hardening and clean-up
 
