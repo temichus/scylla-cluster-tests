@@ -553,8 +553,11 @@ Running log, run table and draft bug reports live in the session notes (`jepsen-
   `:linearizable-keys? true` (memoized downstream sets aliased and mutated). It failed
   `sc-wr-register` on SC under partition and pause. Patched in the fork (`scylla.sc.elle-patch`,
   regression test with the failing history); all 38 per-partition histories of those runs are valid
-  with the patch, the EC canary's anomalies are unchanged. Elle 0.2.8 rewrote the code but needs
-  JDK 21 (see 1.0). Draft upstream issue `bugs/elle-rw-register-linear-set-aliasing.md`.
+  with the patch, the EC canary's anomalies are unchanged. Upstream fixed it in Elle 0.2.7
+  (5cc2eca); 0.2.7 and later ship JDK 21 classes (see 1.0), so the patch stays until the JDK moves.
+  0.2.8 rewrote `ext-key-graph` again and still warns that `:linearizable-keys?` can report false
+  version cycles: re-check any future `:cyclic-versions` with Elle 0.2.8 before calling it a
+  Scylla bug.
 - Passed so far on SC (3 nodes, 300 s): all four workloads under partition and pause;
   `sc-register` under clock.
 
