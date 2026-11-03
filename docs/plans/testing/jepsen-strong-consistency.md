@@ -288,25 +288,25 @@ loader guests reach the internet for `lein deps` and `git clone`.
   Check: a table in `docs/plans/testing/jepsen-baseline.md`. DoD: table has 10 rows per job or
   states "job never ran since <date>". *Needs human access if Jenkins credentials are not available
   to the agent — see §7.*
-- [ ] **0.2 Reproduce the loader bootstrap.** Run `setup_jepsen()`'s commands in a `debian:12`
+- [x] **0.2 Reproduce the loader bootstrap.** Run `setup_jepsen()`'s commands in a `debian:12`
   container. Check: `apt-get install -y openjdk-11-jre` exit code. DoD: documented pass or the
-  exact failing package; if it fails, step 1.1 changes the package to `openjdk-17-jre-headless`.
+  exact failing package; if it fails, step 1.1 changes the package to `openjdk-17-jre-headless`. **Done 2026-11-03** — in `debian:12`: `E: Package 'openjdk-11-jre' has no installation candidate` (same for `-headless`); `openjdk-17-jre-headless` 17.0.21 installs, exit 0. Step 1.1 switches the package.
 - [x] **0.3 Bring up tier A** and run the smoke test from the control node:
   `lein run test --workload none --nemesis none --no-install-scylla --time-limit 10 --node n1 …`.
   Check: `store/latest/results.edn` exists. DoD: `:valid? true` for `none`; `docs/jepsen-sc.md`
   with the exact commands that worked. **Done 2026-11-03** — six attempts, each failure is now a
   numbered item in §2.3 (10–12) and a patch in `docker/jepsen-local/`.
-- [ ] **0.4 Run one existing workload on an SC keyspace** (expect failure):
+- [x] **0.4 Run one existing workload on an SC keyspace** (expect failure):
   `lein run test --workload cas-register …` with a keyspace created as `consistency='global'`.
-  Check: `grep -c InvalidRequest store/latest/jepsen.log`. DoD: >0, confirming §2.2.
+  Check: `grep -c InvalidRequest store/latest/jepsen.log`. DoD: >0, confirming §2.2. **Done 2026-11-03** — cas-register on `consistency = 'global'`, 3 nodes, `--concurrency 6` (the workload needs 2n): the grep term is wrong, the Java driver raises `InvalidQueryException`, `grep -c InvalidQueryException jepsen.log` = 102. Two messages, 50 each: `Strongly consistent updates don't support conditions` (every `IF`) and `Strongly consistent reads must use QUORUM/LOCAL_QUORUM or ONE/LOCAL_ONE consistency level` (every `:serial` read). Confirms §2.2.
 
 ### Phase 1 — Make the harness obey SCT (fork `scylladb/jepsen`, SCT tester)
 
-- [ ] **1.0 Jepsen 0.3.x.** Bump `project.clj` (Jepsen, Clojure 1.11, Elle comes with it), fix
+- [x] **1.0 Jepsen 0.3.x.** Bump `project.clj` (Jepsen, Clojure 1.11, Elle comes with it), fix
   compile errors in the namespaces that are kept (§4 table); the to-be-deleted workloads only need
   to compile. Tier A. Check: `lein check` exits 0, then the 0.3 smoke test (`--workload none`)
   passes **without** the dummy `netcat` package (remove it from `docker/jepsen-local/node/Dockerfile`
-  in the same change). DoD: both; `lein run test-all --help` still lists the old workloads.
+  in the same change). DoD: both; `lein run test-all --help` still lists the old workloads. **Done 2026-11-03** — **0.3.10, not newer**: from 0.3.11 the published jar is AOT-compiled on JDK 21 (`java.util.SequencedCollection` in its rrb-vector classes) and Debian 12 has no JDK 21 package, not even in backports; 0.3.10 is the last jar that loads on JDK 17. Clojure is 1.12.3 (what Jepsen pins), not 1.11. Also needed: slf4j-api 2.0.17 pinned (logback 1.5), membership `State` moved to `jepsen.nemesis.membership.state` with `setup!`/`teardown!`, the Elle 0.1 monkey-patch in `wr_register.clj` removed, dead `conductors.clj` deleted (never required; referenced a non-existent `scylla.db/nodetool`). `lein check` 0; `--workload none` `:valid? true` on a node image without the dummy `netcat`; `test-all --help` lists the workloads. Fork branch `sc-harness`.
 - [ ] **1.1 Fix loader bootstrap** per 0.2 (`jepsen_test.py:38`). Check: `uv run pytest
   unit_tests/unit/ -k jepsen -q` plus 0.2's container command. DoD: both green.
 - [ ] **1.2 `--no-install-scylla` must leave the cluster alone.** In `db.clj`, skip `configure!`,

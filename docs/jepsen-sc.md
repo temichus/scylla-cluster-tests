@@ -9,6 +9,8 @@ What runs: one `control` container (Debian 12, JDK 17, Leiningen) and N `node` c
 (Debian 12 with systemd and sshd, Scylla `master:latest` pre-installed from the deb repo, developer
 mode, `--memory 2G`). The control node runs `lein` from a bind-mounted checkout of
 [scylladb/jepsen](https://github.com/scylladb/jepsen) and ssh-es into the nodes as root.
+Jepsen 0.3.10 is the newest release whose jar runs on JDK 17; 0.3.11 and later ship classes built on
+JDK 21, which Debian 12 does not package.
 
 ## One-time setup
 
@@ -75,7 +77,6 @@ The directory is `jepsen-io/jepsen` at commit `50de29bb` (`docker/`, removed ups
 | JDK from apt (`openjdk-17-jdk-headless`) instead of an x86-64 Temurin tarball | `control/Dockerfile` | arm64 hosts |
 | No copy of the parent directory into the control image; fork is bind-mounted via `fork.yml` | `bin/up`, `control/Dockerfile` | the upstream layout expects the Jepsen monorepo as parent |
 | Scylla master pre-installed, `developer_mode`, `MEM_CONF=--memory 2G`, service disabled | `node/Dockerfile` | `--no-install-scylla`; several nodes on one host |
-| Dummy `netcat` 1.10-99 package (equivs) | `node/Dockerfile` | Jepsen 0.2.4 runs `apt-get install netcat`; no candidate on Debian 12 |
 | `/usr/sbin/tcpdump -> /usr/bin/tcpdump` | `node/Dockerfile` | Jepsen hard-codes `/usr/sbin`; same symlink as `jepsen_test.py:58` |
 | ed25519 key instead of RSA | `bin/up` | jsch signs RSA with SHA-1, Debian 12 sshd rejects it; SCT's node keys are ed25519 too |
 

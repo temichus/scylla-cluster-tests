@@ -51,9 +51,5 @@ RUN mkdir -p /etc/apt/keyrings && \
     systemctl disable scylla-server && \
     rm -rf /var/lib/apt/lists/*
 
-# --- Jepsen 0.2.4 on Debian 12: `apt-get install netcat` has no candidate (virtual package),
-#     and jepsen.db/tcpdump hard-codes /usr/sbin/tcpdump. Same symlink as SCT jepsen_test.py:58.
-RUN apt-get -qy update && apt-get -qy install equivs && cd /tmp && \
-    printf 'Section: misc\nPriority: optional\nStandard-Version: 3.9.2\nPackage: netcat\nVersion: 1.10-99\nDepends: netcat-openbsd\nDescription: dummy netcat for Jepsen 0.2.4 on Debian 12\n' > netcat.ctl && \
-    equivs-build netcat.ctl && dpkg -i netcat_1.10-99_all.deb && rm -f netcat* && \
-    ln -sf /usr/bin/tcpdump /usr/sbin/tcpdump && rm -rf /var/lib/apt/lists/*
+# --- jepsen.db/tcpdump hard-codes /usr/sbin/tcpdump. Same symlink as SCT jepsen_test.py:58.
+RUN ln -sf /usr/bin/tcpdump /usr/sbin/tcpdump
