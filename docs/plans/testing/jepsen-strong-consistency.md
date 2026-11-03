@@ -307,8 +307,8 @@ loader guests reach the internet for `lein deps` and `git clone`.
   to compile. Tier A. Check: `lein check` exits 0, then the 0.3 smoke test (`--workload none`)
   passes **without** the dummy `netcat` package (remove it from `docker/jepsen-local/node/Dockerfile`
   in the same change). DoD: both; `lein run test-all --help` still lists the old workloads. **Done 2026-11-03** — **0.3.10, not newer**: from 0.3.11 the published jar is AOT-compiled on JDK 21 (`java.util.SequencedCollection` in its rrb-vector classes) and Debian 12 has no JDK 21 package, not even in backports; 0.3.10 is the last jar that loads on JDK 17. Clojure is 1.12.3 (what Jepsen pins), not 1.11. Also needed: slf4j-api 2.0.17 pinned (logback 1.5), membership `State` moved to `jepsen.nemesis.membership.state` with `setup!`/`teardown!`, the Elle 0.1 monkey-patch in `wr_register.clj` removed, dead `conductors.clj` deleted (never required; referenced a non-existent `scylla.db/nodetool`). `lein check` 0; `--workload none` `:valid? true` on a node image without the dummy `netcat`; `test-all --help` lists the workloads. Fork branch `sc-harness`.
-- [ ] **1.1 Fix loader bootstrap** per 0.2 (`jepsen_test.py:38`). Check: `uv run pytest
-  unit_tests/unit/ -k jepsen -q` plus 0.2's container command. DoD: both green.
+- [x] **1.1 Fix loader bootstrap** per 0.2 (`jepsen_test.py:38`). Check: `uv run pytest
+  unit_tests/unit/ -k jepsen -q` plus 0.2's container command. DoD: both green. **Done 2026-11-03** — `openjdk-17-jre-headless` (the non-headless `openjdk-11-jre` had no reason to exist on a loader). `debian:12`: `apt-get install -y openjdk-17-jre-headless libjna-java gnuplot graphviz git` exit 0, `java -version` 17.0.21; `uv run pytest unit_tests/unit/ -k jepsen -q`: 15 passed.
 - [ ] **1.2 `--no-install-scylla` must leave the cluster alone.** In `db.clj`, skip `configure!`,
   `wipe!` and the log deletion when `(:install-scylla test)` is false; keep `start!`/`kill!`/
   `pause!` (the nemesis needs them). Check: put a marker comment in `/etc/scylla/scylla.yaml` and a
