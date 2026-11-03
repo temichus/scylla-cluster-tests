@@ -1743,7 +1743,8 @@ class JepsenLogCollector(LogCollector):
         s3_link = []
         if self.nodes:
             jepsen_node = self.nodes[0]
-            if jepsen_archive := self.archive_log_remotely(jepsen_node, "./jepsen-scylla", "jepsen-data"):
+            # store/ only: the clone itself (.git, target/) is a few hundred MB of nothing.
+            if jepsen_archive := self.archive_log_remotely(jepsen_node, "./jepsen-scylla/store", "jepsen-data"):
                 self.receive_log(jepsen_node, jepsen_archive, self.local_dir)
                 s3_link.append(
                     upload_archive_to_s3(
