@@ -251,17 +251,22 @@ needs a cloud cluster also has a local check that runs first. SC is enabled with
 
 ### Which agent runs which step
 
-| Steps | Model | Why |
-| --- | --- | --- |
-| 1.0, 1.2–1.4, all of Phase 2, 3.2–3.4 | Opus 5.5 (or Fable 5.1), high effort | Clojure is a low-resource language for models, and the mistakes that matter are silent: a `:fail` where it should be `:info`, a driver retry left on. The canary catches "checker never says no"; only careful reading catches "says no for the wrong reason". |
-| 1.1, 1.5, 3.1, Phase 4, 5.2, 5.3, docs | Sonnet 5.5 | Python/YAML with an existing pattern to copy and a unit test as the check. |
-| Phase 0, 5.1 soak triage | Sonnet 5.5 | Reading and tabulating. |
+The model is not chosen per launch; it comes from the agent definition in `.claude/agents/`.
+An orchestrator (a session, or a Workflow script) spawns the type named here with
+`Agent(subagent_type: "<name>")`, and the model, effort and tool set follow automatically.
+
+| Steps | Agent type (`.claude/agents/`) | Model | Why |
+| --- | --- | --- | --- |
+| 1.0, 1.2–1.4, all of Phase 2, 3.2–3.4 | `jepsen-clojure` | Opus 5.5 (or Fable 5.1), high effort | Clojure is a low-resource language for models, and the mistakes that matter are silent: a `:fail` where it should be `:info`, a driver retry left on. The canary catches "checker never says no"; only careful reading catches "says no for the wrong reason". |
+| 1.1, 1.5, 3.1, Phase 4, 5.2, 5.3, docs | `sct-mechanical` | Sonnet 5.5 | Python/YAML with an existing pattern to copy and a unit test as the check. |
+| Phase 0, 5.1 soak triage | `sct-mechanical` | Sonnet 5.5 | Reading and tabulating. |
+| Review of every `jepsen-clojure` step | `jepsen-reviewer` | Opus 5.5, read-only tools | See rule 1. |
 
 Two rules that matter more than the model:
 
-1. **Every Clojure change gets a second, fresh-context review agent** (same or stronger model),
-   given the diff, §2.6 and the SC restriction table — not the author's conclusions. An author
-   agent confirms its own hypothesis; a cold reader does not.
+1. **Every Clojure change gets a second, fresh-context review** by `jepsen-reviewer`, given the
+   diff, §2.6 and the SC restriction table — not the author's conclusions. An author agent
+   confirms its own hypothesis; a cold reader does not.
 2. **The author agent runs tier A itself before opening a PR.** "It compiles" is never the DoD;
    `:valid? true` on SC plus `:valid? false` on the EC canary is.
 
