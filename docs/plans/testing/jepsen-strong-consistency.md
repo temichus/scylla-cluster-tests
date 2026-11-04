@@ -2,7 +2,7 @@
 status: draft
 domain: testing
 created: 2026-11-03
-last_updated: 2026-11-03
+last_updated: 2026-11-04
 owner: null
 ---
 
@@ -15,6 +15,9 @@ Related: [Porcupine research](https://scylladb.atlassian.net/wiki/spaces/RND/pag
 
 All work in this plan is done by AI agents. Every step therefore has a command an agent can run
 and a definition of done an agent can check without a human. Humans decide only the items in §7.
+
+**Status (2026-11-04):** SCT integration (3.1, 3.2, 3.5, Phase 4, Phase 5) is deferred by the
+owner's decision. Work continues only on the local tier A bug hunt (§5, Bug hunt).
 
 ## 1. Problem Statement
 
@@ -546,8 +549,8 @@ Running log, run table and draft bug reports live in the session notes (`jepsen-
   `strongly_consistent_tables_start_on_damaged_commitlog` override does not cover it. Triage: the
   start of each affected raft log sat in a commitlog segment that was recycled while the node ran.
   Reproduced on a fresh cluster on the first try; a control run (no nemesis, same 300 s, same
-  SIGKILL) restarts cleanly; a 60 s clock run did not trigger it. Draft report
-  `bugs/sc-raft-replay-committed-entries-missing.md`. Consequence for the job: until fixed, every
+  SIGKILL) restarts cleanly; a 60 s clock run did not trigger it. Filed as
+  SCYLLADB-6011. Consequence for the job: until fixed, every
   clock test ends with an unbootable cluster, so 3.5/5.1 must run clock tests last or re-provision.
 - **Checker bug, not Scylla: Elle 0.2.5 rw-register false `:cyclic-versions`** with
   `:linearizable-keys? true` (memoized downstream sets aliased and mutated). It failed
@@ -570,9 +573,21 @@ Running log, run table and draft bug reports live in the session notes (`jepsen-
   partition burned its ops in milliseconds and Elle answered `:unknown`
   (`:empty-transaction-graph`); a partition with no ok txns now counts as valid; `await-open`
   retries on the wrapped exception.
+- **Round 3 (5 nodes, fresh cluster per test, restart check after each):** SCYLLADB-5657 (P3,
+  "not reproduced" in Jira) reproduced three times without a clock step: after membership, and after
+  kill alone when the load balancer moved a tablet away from a node and back. Nodes then refuse to
+  start with the same `committed entries are missing`. SCYLLADB-5079 (decommission hangs when the
+  drain-failure cancel is dropped) hit under membership.
+- **Harness fixes from round 3:** setup wipes a node the membership nemesis left decommissioned;
+  pause/kill signal scylla by process name (`grepkill!`'s `pgrep -f` stopped its own xargs and hung
+  a run for 10 h); a re-added node seeds from every other node (n1 was every node's seed, so a
+  wiped n1 bootstrapped a second cluster and split the test in two). Run scripts cap each test at
+  900 s and flag a second `bootstrapping group 0 from scratch`.
 - Passed so far on SC (3 nodes, 300 s): all four workloads under partition, pause, kill, clock,
   pause+kill+partition and pause+kill+partition+clock (Elle runs with kill were `:unknown` before
-  the fixes above and must be rerun).
+  the fixes above and must be rerun). On 5 nodes: all four workloads under partition,
+  pause+kill+partition (sc-batch-isolation rerun pending) and kill, and the full mix with clock and
+  membership.
 
 ## 6. Success Criteria
 
