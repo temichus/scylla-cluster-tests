@@ -496,7 +496,7 @@ the Porcupine research reached in §5.3, and what keeps Knossos/Elle fast.
   group 0 voters and the cluster could never re-form (`no raft quorum, total voters count 3, alive
   voters count 1`) — now 1; (b) the 5 s `timeout` let the nemesis wipe a node while its
   decommission was still running, after which the topology coordinator cancels every request
-  (`canceled because some required nodes are dead`) — now 600 s; (c) `nodetool repair` skips tablet
+  (`canceled because some required nodes are dead`) — now 330 s, above Scylla's 5 min tablet snapshot-transfer timeout (repair runs in the background with its own 600 s); (c) `nodetool repair` skips tablet
   keyspaces, the nemesis now runs `nodetool cluster repair`. **Membership needs ≥ 4 nodes**: on 3
   nodes with RF 3, Scylla cannot drain a leaving node (`Unable to find new replica for tablet … when
   draining … Consider adding new nodes`) and the decommission waits forever, by design. 3.1's 5-node
